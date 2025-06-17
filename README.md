@@ -4,7 +4,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 
 ## Features
 
-- **Interactive authentication** – Sign in to your Dynamics CRM tenant and automatically discover all environments using the Discovery Service.
+- **Interactive authentication** – Sign in to your Dynamics CRM tenant and automatically discover all environments using the Discovery Service. The device login page opens in your browser automatically.
 - **Virtual file system** – Browse and edit Web Resources as regular files in a custom tree view.
 - **Publish on save** – Press `Ctrl+S` to publish updates back to Dynamics CRM.
 - **Sidebar integration** – A dedicated view allows you to connect to an environment and manage Web Resources.
@@ -30,7 +30,8 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    ```bash
    npm run build
    ```
-3. Launch the extension in the Extension Development Host:
+3. Copy `.env.example` to `.env` and set `DYNAMICS_CRM_CLIENT_ID` to your Azure AD client ID.
+4. Launch the extension in the Extension Development Host:
    ```bash
    code .
    ```
@@ -42,7 +43,7 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
 2. Create a **New registration** and choose the **Public client/native** platform.
 3. Add `http://localhost` as a redirect URI.
 4. Under **API permissions** add the **Dynamics CRM** delegated permission `user_impersonation` and grant admin consent if required.
-5. Copy the **Application (client) ID** and set it in VS Code via `File > Preferences > Settings > Dynamics CRM: Client Id`.
+5. Copy the **Application (client) ID** and set `DYNAMICS_CRM_CLIENT_ID` in your `.env` file.
 
 The extension authenticates using the device code flow and does not require a client secret.
 

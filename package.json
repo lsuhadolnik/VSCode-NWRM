@@ -6,12 +6,19 @@
   "engines": {
     "vscode": "^1.80.0"
   },
-  "categories": ["Other"],
-  "activationEvents": ["onCommand:dynamicsCrm.connect"],
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:dynamicsCrm.connect"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      {"command": "dynamicsCrm.connect", "title": "Dynamics CRM: Connect"}
+      {
+        "command": "dynamicsCrm.connect",
+        "title": "Dynamics CRM: Connect"
+      }
     ],
     "configuration": {
       "type": "object",
@@ -32,11 +39,12 @@
     "test": "npm run build"
   },
   "devDependencies": {
-    "@types/vscode": "^1.80.0",
     "@types/node": "^18.18.0",
+    "@types/vscode": "^1.80.0",
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "@azure/msal-node": "^3.6.0"
+    "@azure/msal-node": "^3.6.0",
+    "dotenv": "^16.5.0"
   }
 }

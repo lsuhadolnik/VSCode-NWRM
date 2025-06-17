@@ -12,7 +12,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 
 ## Getting Started
 
-This repository contains a TypeScript-based VSCode extension built using [Vite](https://vitejs.dev/) for bundling.
+This repository contains a TypeScript-based VSCode extension compiled using the TypeScript compiler (`tsc`).
 
 ### Prerequisites
 
@@ -48,7 +48,7 @@ The extension authenticates using the device code flow and does not require a cl
 
 ### Scripts
 
-- `npm run build` – Bundle the extension using Vite.
+- `npm run build` – Compile the extension using TypeScript.
 - `npm test` – Currently runs the build as a sanity check.
 - `npm run watch` – Rebuild on file changes.
 

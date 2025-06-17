@@ -33,6 +33,9 @@ async function login(context: vscode.ExtensionContext): Promise<void> {
 
   try {
     const result = await pca.acquireTokenByDeviceCode(request);
+    if (!result) {
+      throw new Error('No token returned');
+    }
     await context.globalState.update('accessToken', result.accessToken);
     vscode.window.showInformationMessage('Signed in to Dynamics CRM');
   } catch (err: any) {

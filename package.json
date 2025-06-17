@@ -19,7 +19,17 @@
         "command": "dynamicsCrm.connect",
         "title": "Dynamics CRM: Connect"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Dynamics CRM Web Resources Manager",
+      "properties": {
+        "dynamicsCrm.clientId": {
+          "type": "string",
+          "description": "Azure AD application (client) ID used for authentication"
+        }
+      }
+    }
   },
   "scripts": {
     "build": "vite build",
@@ -30,5 +40,8 @@
     "@types/vscode": "^1.80.0",
     "typescript": "^5.2.2",
     "vite": "^4.4.9"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^3.6.0"
   }
 }

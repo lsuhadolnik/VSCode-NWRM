@@ -36,6 +36,16 @@ This repository contains a TypeScript-based VSCode extension built using [Vite](
    ```
    Press `F5` in VS Code to start debugging.
 
+### Azure App Registration
+
+1. Sign in to the [Azure Portal](https://portal.azure.com/) and open **Azure Active Directory** > **App registrations**.
+2. Create a **New registration** and choose the **Public client/native** platform.
+3. Add `http://localhost` as a redirect URI.
+4. Under **API permissions** add the **Dynamics CRM** delegated permission `user_impersonation` and grant admin consent if required.
+5. Copy the **Application (client) ID** and set it in VS Code via `File > Preferences > Settings > Dynamics CRM: Client Id`.
+
+The extension authenticates using the device code flow and does not require a client secret.
+
 ### Scripts
 
 - `npm run build` – Bundle the extension using Vite.

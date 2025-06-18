@@ -32,8 +32,9 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    ```bash
    npm run build
    ```
-3. Copy `.env.example` to `.env` and set `DYNAMICS_CRM_CLIENT_ID` to your Azure AD client ID.
-4. Launch the extension in the Extension Development Host:
+3. Extension icons are stored in the `images/` folder. The activity bar icon uses a 20x20 SVG (`images/webresource.svg`). Replace it with your own if desired.
+4. Copy `.env.example` to `.env` and set `DYNAMICS_CRM_CLIENT_ID` to your Azure AD client ID.
+5. Launch the extension in the Extension Development Host:
    ```bash
    code .
    ```

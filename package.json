@@ -18,6 +18,7 @@
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
+  "icon": "images/webresource.svg",
   "contributes": {
     "commands": [
       {
@@ -47,7 +48,8 @@
       "activitybar": [
         {
           "id": "webResourceManager",
-          "title": "Web Resource Manager"
+          "title": "Web Resource Manager",
+          "icon": "images/webresource.svg"
         }
       ]
     },

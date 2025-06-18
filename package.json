@@ -12,6 +12,7 @@
   "activationEvents": [
     "onCommand:dynamicsCrm.connect",
     "onView:connections",
+    "onView:webResources",
     "onCommand:dynamicsCrm.connectSaved",
     "onCommand:dynamicsCrm.deleteToken",
     "onCommand:dynamicsCrm.addConnection",
@@ -64,6 +65,10 @@
         {
           "id": "connections",
           "name": "Connections"
+        },
+        {
+          "id": "webResources",
+          "name": "Web Resources"
         }
       ]
     },

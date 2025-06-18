@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
 import { ConnectionsProvider, ConnectionItem } from './connections';
+import { WebResourcesProvider } from './webResources';
 
 interface AuthResult {
   pca: PublicClientApplication;
@@ -18,11 +19,13 @@ export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('Dynamics CRM');
   const fsProvider = new CrmFileSystemProvider(output);
   const connectionsProvider = new ConnectionsProvider(context);
+  const webResourcesProvider = new WebResourcesProvider(fsProvider);
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider('crm', fsProvider, { isReadonly: true })
   );
 
   vscode.window.registerTreeDataProvider('connections', connectionsProvider);
+  vscode.window.registerTreeDataProvider('webResources', webResourcesProvider);
 
   // if the window was reopened with the crm folder, load pending connection
   const pendingToken = context.globalState.get<string>('pendingToken');
@@ -33,6 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.workspaceFolders?.some((f) => f.uri.scheme === 'crm')
   ) {
     await fsProvider.load(pendingToken, pendingInstance.ApiUrl);
+    webResourcesProvider.refresh();
     const name = `${pendingInstance.FriendlyName ?? pendingInstance.UniqueName} (${new URL(
       pendingInstance.ApiUrl
     ).host})`;
@@ -65,6 +69,7 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
         await fsProvider.load(token, instance.ApiUrl);
+        webResourcesProvider.refresh();
         const name = `${instance.FriendlyName ?? instance.UniqueName} (${new URL(instance.ApiUrl).host})`;
         const existing = vscode.workspace.workspaceFolders?.findIndex((f) => f.uri.scheme === 'crm') ?? -1;
         if (existing >= 0) {
@@ -92,6 +97,7 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
     await fsProvider.load(token, item.instance.ApiUrl);
+    webResourcesProvider.refresh();
     const name = `${item.instance.FriendlyName ?? item.instance.UniqueName} (${new URL(item.instance.ApiUrl).host})`;
     const existing = vscode.workspace.workspaceFolders?.findIndex((f) => f.uri.scheme === 'crm') ?? -1;
     if (existing >= 0) {

@@ -59,12 +59,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       throw vscode.FileSystemError.Unavailable('Not connected');
     }
     this.output?.appendLine(`Fetching ${uri.path}`);
-    const resp = await fetch(
-      `${this.apiUrl}/api/data/v9.2/webresourceset(${file.id})?$select=content`,
-      {
-        headers: { Authorization: `Bearer ${this.accessToken}` }
-      }
-    );
+    const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${file.id})?$select=content`;
+    const headers = { Authorization: `Bearer ${this.accessToken}` };
+    this.output?.appendLine(`GET ${url}`);
+    this.output?.appendLine(`Request Headers: ${JSON.stringify(headers)}`);
+    const resp = await fetch(url, { headers });
     if (!resp.ok) {
       const body = await resp.text();
       this.output?.appendLine(
@@ -98,11 +97,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
 
     let url = `${this.apiUrl}/api/data/v9.2/webresourceset?$select=webresourceid,name`;
+    const headers = { Authorization: `Bearer ${this.accessToken}` };
     while (url) {
       this.output?.appendLine(`GET ${url}`);
-      const resp = await fetch(url, {
-        headers: { Authorization: `Bearer ${this.accessToken}` }
-      });
+      this.output?.appendLine(`Request Headers: ${JSON.stringify(headers)}`);
+      const resp = await fetch(url, { headers });
       if (!resp.ok) {
         const body = await resp.text();
         this.output?.appendLine(

@@ -44,7 +44,8 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    **Dynamics CRM** output channel for details.
    You can open the output view with `Ctrl+Shift+U` (View → Output) and choose
    **Dynamics CRM** from the channel dropdown to see detailed logs, including web
-   resource load errors.
+   resource load errors. Each HTTP request is logged with headers to make
+   troubleshooting authentication problems easier.
 
 ### Environment Discovery
 

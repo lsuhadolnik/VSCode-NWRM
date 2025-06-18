@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { PublicClientApplication, DeviceCodeRequest, AuthenticationResult, AccountInfo } from '@azure/msal-node';
 import fetch from 'node-fetch';
 import * as path from 'path';
-import * as fs from 'fs/promises';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
 import { ConnectionsProvider, ConnectionItem } from './connections';
@@ -25,37 +24,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   vscode.window.registerTreeDataProvider('connections', connectionsProvider);
 
-  // Load pending connection if we were launched with a CRM workspace
-  const pendingInstance = context.globalState.get<DiscoveryInstance>('pendingInstance');
-  const pendingExpiry = context.globalState.get<number>('pendingExpires');
-  if (pendingInstance) {
-    const applyConnection = async () => {
-      const token = await context.secrets.get('pendingToken');
-      if (token && pendingExpiry && pendingExpiry > Date.now()) {
-        await fsProvider.load(token, pendingInstance.ApiUrl);
-        vscode.workspace.updateWorkspaceFolders(
-          0,
-          vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0,
-          {
-            uri: vscode.Uri.parse('crm:/'),
-            name: `${pendingInstance.FriendlyName ?? pendingInstance.UniqueName} (${new URL(pendingInstance.ApiUrl).host})`
-          }
-        );
-      }
-      await context.secrets.delete('pendingToken');
-      await context.globalState.update('pendingInstance', undefined);
-      await context.globalState.update('pendingExpires', undefined);
-    };
 
-    if (vscode.workspace.isTrusted) {
-      await applyConnection();
-    } else {
-      const disposableTrust = vscode.workspace.onDidGrantWorkspaceTrust(async () => {
-        await applyConnection();
-        disposableTrust.dispose();
-      });
-    }
-  }
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {
     const auth = await login(context, output);
@@ -74,16 +43,16 @@ export async function activate(context: vscode.ExtensionContext) {
         const token = envTokenResult.accessToken;
         const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
         await saveConnection(context, instance, token, tokenExpires);
-        await context.secrets.store('pendingToken', token);
-        await context.globalState.update('pendingInstance', instance);
-        await context.globalState.update('pendingExpires', tokenExpires.getTime());
-
-        const workspacePath = path.join(context.globalStorageUri.fsPath, 'crm.code-workspace');
-        await fs.mkdir(context.globalStorageUri.fsPath, { recursive: true });
-        const workspaceContent = JSON.stringify({ folders: [{ uri: 'crm:/' }] }, null, 2);
-        await fs.writeFile(workspacePath, workspaceContent);
+        await fsProvider.load(token, instance.ApiUrl);
+        const name = `${instance.FriendlyName ?? instance.UniqueName} (${new URL(instance.ApiUrl).host})`;
+        const existing = vscode.workspace.workspaceFolders?.findIndex((f) => f.uri.scheme === 'crm') ?? -1;
+        if (existing >= 0) {
+          vscode.workspace.updateWorkspaceFolders(existing, 1, { uri: vscode.Uri.parse('crm:/'), name });
+        } else {
+          const index = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0;
+          vscode.workspace.updateWorkspaceFolders(index, 0, { uri: vscode.Uri.parse('crm:/'), name });
+        }
         connectionsProvider.refresh();
-        vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspacePath), true);
       }
     }
   });
@@ -95,16 +64,15 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('Saved token has expired.');
       return;
     }
-    await context.secrets.store('pendingToken', token);
-    await context.globalState.update('pendingInstance', item.instance);
-    await context.globalState.update('pendingExpires', expiry);
-
-    const workspacePath = path.join(context.globalStorageUri.fsPath, 'crm.code-workspace');
-    await fs.mkdir(context.globalStorageUri.fsPath, { recursive: true });
-    const workspaceContent = JSON.stringify({ folders: [{ uri: 'crm:/' }] }, null, 2);
-    await fs.writeFile(workspacePath, workspaceContent);
-
-    vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspacePath), true);
+    await fsProvider.load(token, item.instance.ApiUrl);
+    const name = `${item.instance.FriendlyName ?? item.instance.UniqueName} (${new URL(item.instance.ApiUrl).host})`;
+    const existing = vscode.workspace.workspaceFolders?.findIndex((f) => f.uri.scheme === 'crm') ?? -1;
+    if (existing >= 0) {
+      vscode.workspace.updateWorkspaceFolders(existing, 1, { uri: vscode.Uri.parse('crm:/'), name });
+    } else {
+      const index = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0;
+      vscode.workspace.updateWorkspaceFolders(index, 0, { uri: vscode.Uri.parse('crm:/'), name });
+    }
   });
 
   const deleteTokenCmd = vscode.commands.registerCommand('dynamicsCrm.deleteToken', async (item: ConnectionItem) => {

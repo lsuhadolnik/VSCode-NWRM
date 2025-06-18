@@ -12,7 +12,6 @@
   "activationEvents": [
     "onCommand:dynamicsCrm.connect",
     "onView:connections",
-    "onView:webResources",
     "onCommand:dynamicsCrm.connectSaved",
     "onCommand:dynamicsCrm.deleteToken",
     "onCommand:dynamicsCrm.addConnection",
@@ -69,10 +68,6 @@
         {
           "id": "connections",
           "name": "Connections"
-        },
-        {
-          "id": "webResources",
-          "name": "Web Resources"
         }
       ]
     },
@@ -81,11 +76,6 @@
         {
           "command": "dynamicsCrm.deleteToken",
           "when": "view == connections && viewItem == connection",
-          "group": "inline"
-        },
-        {
-          "command": "dynamicsCrm.publishWebResource",
-          "when": "view == webResources && viewItem == file",
           "group": "inline"
         }
       ],

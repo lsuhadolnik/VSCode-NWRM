@@ -7,7 +7,6 @@ import * as fs from 'fs/promises';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
 import { ConnectionsProvider, ConnectionItem } from './connections';
-import { WebResourcesProvider, WebResourceItem } from './webResources';
 
 interface AuthResult {
   pca: PublicClientApplication;
@@ -26,9 +25,8 @@ async function createWorkspaceFile(instance: DiscoveryInstance): Promise<string>
 async function tryLoadWorkspace(
   context: vscode.ExtensionContext,
   fsProvider: CrmFileSystemProvider,
-  webResourcesProvider: WebResourcesProvider,
   connectionsProvider: ConnectionsProvider,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
 ) {
   const ws = vscode.workspace.workspaceFile;
   if (!ws) {
@@ -54,7 +52,6 @@ async function tryLoadWorkspace(
       });
     }
     await fsProvider.load(token, instance.ApiUrl);
-    webResourcesProvider.refresh();
     connectionsProvider.refresh();
   }
 }
@@ -66,7 +63,6 @@ export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('Dynamics CRM');
   const fsProvider = new CrmFileSystemProvider(output);
   const connectionsProvider = new ConnectionsProvider(context);
-  const webResourcesProvider = new WebResourcesProvider(fsProvider);
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider('crm', fsProvider, {
       isReadonly: false,
@@ -74,7 +70,6 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   vscode.window.registerTreeDataProvider('connections', connectionsProvider);
-  vscode.window.registerTreeDataProvider('webResources', webResourcesProvider);
 
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {
@@ -135,12 +130,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const publishCmd = vscode.commands.registerCommand(
     'dynamicsCrm.publishWebResource',
-    async (resource?: vscode.Uri | WebResourceItem) => {
+    async (resource?: vscode.Uri) => {
       let uri: vscode.Uri | undefined;
       if (resource instanceof vscode.Uri) {
         uri = resource;
-      } else if (resource instanceof WebResourceItem) {
-        uri = resource.uri;
       } else if (vscode.window.activeTextEditor) {
         uri = vscode.window.activeTextEditor.document.uri;
       }
@@ -178,7 +171,7 @@ export async function activate(context: vscode.ExtensionContext) {
     output,
   );
 
-  await tryLoadWorkspace(context, fsProvider, webResourcesProvider, connectionsProvider, output);
+  await tryLoadWorkspace(context, fsProvider, connectionsProvider, output);
 }
 
 

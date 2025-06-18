@@ -93,7 +93,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
         await saveConnection(context, instance, token, tokenExpires);
         const workspaceFile = await createWorkspaceFile(instance);
-        await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspaceFile), true);
+        await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspaceFile), false);
       }
     }
   });
@@ -113,7 +113,7 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand(
         'vscode.openFolder',
         vscode.Uri.file(workspaceFile),
-        true
+        false
       );
     }
   );

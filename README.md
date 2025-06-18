@@ -11,7 +11,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
 - **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.
 - **Add connection button** – Use the **+ Add Connection** action in the sidebar to sign in to another environment.
-- **Workspace per environment** – Connections open a `.code-workspace` file saved under `~/D365-NWRM` so each environment loads in its own window.
+- **Workspace per environment** – Connections create a `.code-workspace` file under `~/D365-NWRM` and open it in the current window.
 - **Load notification** – When Web Resources finish loading, a notification offers to open the Web Resources view.
 
 ## Getting Started
@@ -53,7 +53,7 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   troubleshooting authentication problems easier.
   Saved connections with valid tokens appear in the **Web Resource Manager** sidebar so you can quickly reconnect or remove them.
   After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
-  When you select an environment, a workspace file is created under `~/D365-NWRM` and opened in a new VS Code window. Web Resources appear in the **Web Resources** tree once loading completes.
+  When you select an environment, a workspace file is created under `~/D365-NWRM` and opened in the current VS Code window. Web Resources appear in the **Web Resources** tree once loading completes.
   If prompted to trust the workspace, choose **Yes** and the resources will load automatically.
 
 ### Environment Discovery

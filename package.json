@@ -14,6 +14,7 @@
     "onView:connections",
     "onCommand:dynamicsCrm.connectSaved",
     "onCommand:dynamicsCrm.deleteToken",
+    "onCommand:dynamicsCrm.addConnection",
     "onFileSystem:crm",
     "onStartupFinished"
   ],
@@ -32,6 +33,11 @@
       {
         "command": "dynamicsCrm.deleteToken",
         "title": "Dynamics CRM: Delete Token"
+      },
+      {
+        "command": "dynamicsCrm.addConnection",
+        "title": "Dynamics CRM: Add Connection",
+        "icon": "$(add)"
       }
     ],
     "configuration": {
@@ -67,6 +73,13 @@
           "command": "dynamicsCrm.deleteToken",
           "when": "view == connections && viewItem == connection",
           "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "dynamicsCrm.addConnection",
+          "when": "view == connections",
+          "group": "navigation"
         }
       ]
     }

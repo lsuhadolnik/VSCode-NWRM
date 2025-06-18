@@ -111,7 +111,11 @@ export async function activate(context: vscode.ExtensionContext) {
     connectionsProvider.refresh();
   });
 
-  context.subscriptions.push(disposable, connectSavedCmd, deleteTokenCmd, output);
+  const addConnectionCmd = vscode.commands.registerCommand('dynamicsCrm.addConnection', async () => {
+    vscode.commands.executeCommand('dynamicsCrm.connect');
+  });
+
+  context.subscriptions.push(disposable, connectSavedCmd, deleteTokenCmd, addConnectionCmd, output);
 }
 
 

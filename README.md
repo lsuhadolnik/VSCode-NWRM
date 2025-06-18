@@ -9,6 +9,10 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Publish on save** – Press `Ctrl+S` to publish updates back to Dynamics CRM.
 - **Sidebar integration** – A dedicated view allows you to connect to an environment and manage Web Resources.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
+- **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.
+- **Add connection button** – Use the **+ Add Connection** action in the sidebar to sign in to another environment.
+- **Workspace per environment** – Connections create a `.code-workspace` file under `~/D365-NWRM` and open it in the current window.
+- **Load notification** – When Web Resources finish loading, a notification offers to open the Web Resources view.
 
 ## Getting Started
 
@@ -30,8 +34,9 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    ```bash
    npm run build
    ```
-3. Copy `.env.example` to `.env` and set `DYNAMICS_CRM_CLIENT_ID` to your Azure AD client ID.
-4. Launch the extension in the Extension Development Host:
+3. Extension icons are stored in the `images/` folder. The activity bar icon uses a 20x20 SVG (`images/webresource.svg`). Replace it with your own if desired.
+4. Copy `.env.example` to `.env` and set `DYNAMICS_CRM_CLIENT_ID` to your Azure AD client ID.
+5. Launch the extension in the Extension Development Host:
    ```bash
    code .
    ```
@@ -39,9 +44,17 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    Once VS Code launches, run the **Dynamics CRM: Connect** command and choose
    the environment you want to work with. A quick pick displays the device code
    and copies it to your clipboard, opening the login page when you press
-   **Enter**.
-   If anything goes wrong during sign in or environment discovery, check the
-   **Dynamics CRM** output channel for details.
+  **Enter**.
+  If anything goes wrong during sign in or environment discovery, check the
+  **Dynamics CRM** output channel for details.
+  You can open the output view with `Ctrl+Shift+U` (View → Output) and choose
+  **Dynamics CRM** from the channel dropdown to see detailed logs, including web
+  resource load errors. Each HTTP request is logged with headers to make
+  troubleshooting authentication problems easier.
+  Saved connections with valid tokens appear in the **Web Resource Manager** sidebar so you can quickly reconnect or remove them.
+  After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
+  When you select an environment, a workspace file is created under `~/D365-NWRM` and opened in the current VS Code window. Web Resources appear in the **Web Resources** tree once loading completes.
+  If prompted to trust the workspace, choose **Yes** and the resources will load automatically.
 
 ### Environment Discovery
 

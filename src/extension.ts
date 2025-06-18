@@ -1,27 +1,143 @@
 import * as vscode from 'vscode';
-import { PublicClientApplication, DeviceCodeRequest } from '@azure/msal-node';
+import { PublicClientApplication, DeviceCodeRequest, AuthenticationResult, AccountInfo } from '@azure/msal-node';
 import fetch from 'node-fetch';
 import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs/promises';
 import * as dotenv from 'dotenv';
+import { CrmFileSystemProvider } from './crmFs';
+import { ConnectionsProvider, ConnectionItem } from './connections';
+import { WebResourcesProvider } from './webResources';
 
-export function activate(context: vscode.ExtensionContext) {
+interface AuthResult {
+  pca: PublicClientApplication;
+  result: AuthenticationResult;
+}
+
+async function createWorkspaceFile(instance: DiscoveryInstance): Promise<string> {
+  const dir = path.join(os.homedir(), 'D365-NWRM');
+  await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, `${instance.UrlName}.code-workspace`);
+  const content = JSON.stringify({ folders: [{ uri: 'crm:/' }] }, null, 2);
+  await fs.writeFile(file, content);
+  return file;
+}
+
+async function tryLoadWorkspace(
+  context: vscode.ExtensionContext,
+  fsProvider: CrmFileSystemProvider,
+  webResourcesProvider: WebResourcesProvider,
+  connectionsProvider: ConnectionsProvider,
+  output: vscode.OutputChannel
+) {
+  const ws = vscode.workspace.workspaceFile;
+  if (!ws) {
+    return;
+  }
+  const name = path.basename(ws.fsPath, '.code-workspace');
+  const token = await context.secrets.get(`token:${name}`);
+  const expiry = context.globalState.get<number>(`tokenExpires:${name}`) ?? 0;
+  const saved =
+    context.globalState.get<Record<string, DiscoveryInstance>>("savedEnvironments") ?? {};
+  const instance = saved[name];
+  if (token && expiry > Date.now() && instance) {
+    const label = `${instance.FriendlyName ?? instance.UniqueName} (${new URL(
+      instance.ApiUrl
+    ).host})`;
+    if (
+      !vscode.workspace.workspaceFolders ||
+      !vscode.workspace.workspaceFolders.find((f) => f.uri.scheme === 'crm')
+    ) {
+      vscode.workspace.updateWorkspaceFolders(0, 0, {
+        uri: vscode.Uri.parse('crm:/'),
+        name: label,
+      });
+    }
+    await fsProvider.load(token, instance.ApiUrl);
+    webResourcesProvider.refresh();
+    connectionsProvider.refresh();
+  }
+}
+
+export async function activate(context: vscode.ExtensionContext) {
   // Load environment variables from .env packaged with the extension
   dotenv.config({ path: path.join(context.extensionPath, '.env') });
 
   const output = vscode.window.createOutputChannel('Dynamics CRM');
+  const fsProvider = new CrmFileSystemProvider(output);
+  const connectionsProvider = new ConnectionsProvider(context);
+  const webResourcesProvider = new WebResourcesProvider(fsProvider);
+  context.subscriptions.push(
+    vscode.workspace.registerFileSystemProvider('crm', fsProvider, { isReadonly: true })
+  );
+
+  vscode.window.registerTreeDataProvider('connections', connectionsProvider);
+  vscode.window.registerTreeDataProvider('webResources', webResourcesProvider);
+
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {
-    const token = await login(context, output);
-    if (token) {
-      const instances = await listInstances(token, output);
-      await promptForInstance(context, instances);
+    const auth = await login(context, output);
+    if (auth) {
+      const { pca, result } = auth;
+      const discoveryToken = result.accessToken;
+      const instances = await listInstances(discoveryToken, output);
+      const instance = await promptForInstance(context, instances);
+      if (instance && result.account) {
+        const envTokenResult = await acquireTokenForResource(
+          pca,
+          result.account,
+          instance.ApiUrl,
+          output
+        );
+        const token = envTokenResult.accessToken;
+        const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
+        await saveConnection(context, instance, token, tokenExpires);
+        const workspaceFile = await createWorkspaceFile(instance);
+        await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspaceFile), false);
+      }
     }
   });
 
-  context.subscriptions.push(disposable, output);
+  const connectSavedCmd = vscode.commands.registerCommand(
+    'dynamicsCrm.connectSaved',
+    async (item: ConnectionItem) => {
+      const token = await context.secrets.get(`token:${item.instance.UrlName}`);
+      const expiry =
+        context.globalState.get<number>(`tokenExpires:${item.instance.UrlName}`) ?? 0;
+      if (!token || expiry <= Date.now()) {
+        vscode.window.showErrorMessage('Saved token has expired.');
+        return;
+      }
+      await saveConnection(context, item.instance, token, new Date(expiry));
+      const workspaceFile = await createWorkspaceFile(item.instance);
+      await vscode.commands.executeCommand(
+        'vscode.openFolder',
+        vscode.Uri.file(workspaceFile),
+        false
+      );
+    }
+  );
+
+  const deleteTokenCmd = vscode.commands.registerCommand('dynamicsCrm.deleteToken', async (item: ConnectionItem) => {
+    await context.secrets.delete(`token:${item.instance.UrlName}`);
+    await context.globalState.update(`tokenExpires:${item.instance.UrlName}`, undefined);
+    const saved = context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
+    delete saved[item.instance.UrlName];
+    await context.globalState.update('savedEnvironments', saved);
+    connectionsProvider.refresh();
+  });
+
+  const addConnectionCmd = vscode.commands.registerCommand('dynamicsCrm.addConnection', async () => {
+    vscode.commands.executeCommand('dynamicsCrm.connect');
+  });
+
+  context.subscriptions.push(disposable, connectSavedCmd, deleteTokenCmd, addConnectionCmd, output);
+
+  await tryLoadWorkspace(context, fsProvider, webResourcesProvider, connectionsProvider, output);
 }
 
-async function login(context: vscode.ExtensionContext, output: vscode.OutputChannel): Promise<string | undefined> {
+
+async function login(context: vscode.ExtensionContext, output: vscode.OutputChannel): Promise<AuthResult | undefined> {
   const config = vscode.workspace.getConfiguration('dynamicsCrm');
   const envClientId = process.env.DYNAMICS_CRM_CLIENT_ID;
   const clientId = envClientId ?? config.get<string>('clientId');
@@ -70,7 +186,7 @@ async function login(context: vscode.ExtensionContext, output: vscode.OutputChan
     await context.globalState.update('accessToken', result.accessToken);
     vscode.window.showInformationMessage('Signed in to Dynamics CRM');
     output.appendLine('Authentication successful.');
-    return result.accessToken;
+    return { pca, result };
   } catch (err: any) {
     output.appendLine(`Authentication failed: ${err}`);
     vscode.window.showErrorMessage(`Failed to sign in: ${err}`);
@@ -78,7 +194,54 @@ async function login(context: vscode.ExtensionContext, output: vscode.OutputChan
   }
 }
 
-interface DiscoveryInstance {
+async function acquireTokenForResource(
+  pca: PublicClientApplication,
+  account: AccountInfo,
+  resourceUrl: string,
+  output: vscode.OutputChannel
+): Promise<AuthenticationResult> {
+  const scopes = [`${resourceUrl.replace(/\/?$/, '')}/.default`];
+  try {
+    output.appendLine(`Acquiring token silently for ${resourceUrl}`);
+    const result = await pca.acquireTokenSilent({ account, scopes });
+    if (!result) {
+      throw new Error('No token returned');
+    }
+    return result;
+  } catch (err) {
+    output.appendLine(`Silent token acquisition failed: ${err}`);
+    const request: DeviceCodeRequest = {
+      scopes,
+      deviceCodeCallback: async (response) => {
+        output.appendLine(`Device code: ${response.userCode}`);
+        output.appendLine(`Verification URL: ${response.verificationUri}`);
+        const pick = await vscode.window.showQuickPick(
+          [
+            {
+              label: response.userCode,
+              description: 'Press Enter to copy the code and open the browser',
+            },
+          ],
+          {
+            placeHolder: 'A browser window will open for sign in',
+          }
+        );
+        if (pick && response.verificationUri) {
+          await vscode.env.clipboard.writeText(response.userCode);
+          vscode.env.openExternal(vscode.Uri.parse(response.verificationUri));
+          vscode.window.showInformationMessage('Device code copied to clipboard.');
+        }
+      },
+    };
+    const result = await pca.acquireTokenByDeviceCode(request);
+    if (!result) {
+      throw new Error('No token returned');
+    }
+    return result;
+  }
+}
+
+export interface DiscoveryInstance {
   ApiUrl: string;
   UniqueName: string;
   UrlName: string;
@@ -107,10 +270,11 @@ async function listInstances(accessToken: string, output: vscode.OutputChannel):
 async function promptForInstance(
   context: vscode.ExtensionContext,
   instances: DiscoveryInstance[]
-): Promise<void> {
+): Promise<DiscoveryInstance | undefined> {
   const items = instances.map((i) => ({
     label: i.FriendlyName ?? i.UniqueName,
     description: i.UrlName,
+    detail: i.ApiUrl,
     instance: i
   }));
   const pick = await vscode.window.showQuickPick(items, {
@@ -119,7 +283,22 @@ async function promptForInstance(
   if (pick) {
     await context.globalState.update('selectedInstance', pick.instance.UrlName);
     vscode.window.showInformationMessage(`Selected ${pick.label}`);
+    return pick.instance;
   }
+  return undefined;
+}
+
+async function saveConnection(
+  context: vscode.ExtensionContext,
+  instance: DiscoveryInstance,
+  token: string,
+  expires: Date
+): Promise<void> {
+  await context.secrets.store(`token:${instance.UrlName}`, token);
+  await context.globalState.update(`tokenExpires:${instance.UrlName}`, expires.getTime());
+  const saved = context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
+  saved[instance.UrlName] = instance;
+  await context.globalState.update('savedEnvironments', saved);
 }
 
 export function deactivate() {}

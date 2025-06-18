@@ -52,6 +52,8 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   Saved connections with valid tokens appear in the **Web Resource Manager** sidebar so you can quickly reconnect or remove them.
   After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
   A new VS Code window opens with a workspace containing your Web Resources so the original window remains clean.
+  If you're debugging the extension (Extension Development Host), additional windows opened with this command will not automatically load the extension.
+  Install the extension locally or launch a separate Extension Development Host if you need multi-window testing.
   If prompted to trust the workspace, choose **Yes** and the Web Resources will load automatically once trust is granted.
 
 ### Environment Discovery

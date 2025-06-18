@@ -90,38 +90,46 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     throw vscode.FileSystemError.NoPermissions();
   }
 
-  async load(accessToken: string, apiUrl: string): Promise<void> {
+  async load(accessToken: string, apiUrl: string): Promise<number> {
     this.accessToken = accessToken;
     this.apiUrl = apiUrl.replace(/\/?$/, '');
     this.root.children.clear();
     this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
 
-    let url = `${this.apiUrl}/api/data/v9.2/webresourceset?$select=webresourceid,name`;
-    const headers = { Authorization: `Bearer ${this.accessToken}` };
     let count = 0;
-    while (url) {
-      this.output?.appendLine(`GET ${url}`);
-      this.output?.appendLine(`Request Headers: ${JSON.stringify(headers)}`);
-      const resp = await fetch(url, { headers });
-      if (!resp.ok) {
-        const body = await resp.text();
-        this.output?.appendLine(
-          `Failed to list webresources: ${resp.status} ${body}`
-        );
-        throw new Error(`Failed to list webresources: ${resp.status}`);
-      }
-      const json = await resp.json();
-      for (const item of json.value as { webresourceid: string; name: string }[]) {
-        if (this._isExcluded(item.name)) {
-          continue;
+    await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: 'Loading web resources...' },
+      async () => {
+        let url = `${this.apiUrl}/api/data/v9.2/webresourceset?$select=webresourceid,name`;
+        const headers = { Authorization: `Bearer ${this.accessToken}` };
+        while (url) {
+          this.output?.appendLine(`GET ${url}`);
+          this.output?.appendLine(`Request Headers: ${JSON.stringify(headers)}`);
+          const resp = await fetch(url, { headers });
+          if (!resp.ok) {
+            const body = await resp.text();
+            this.output?.appendLine(
+              `Failed to list webresources: ${resp.status} ${body}`
+            );
+            throw new Error(`Failed to list webresources: ${resp.status}`);
+          }
+          const json = await resp.json();
+          for (const item of json.value as { webresourceid: string; name: string }[]) {
+            if (this._isExcluded(item.name)) {
+              continue;
+            }
+            this._addEntry(item.name, item.webresourceid);
+            count++;
+          }
+          url = json['@odata.nextLink'];
         }
-        this._addEntry(item.name, item.webresourceid);
-        count++;
       }
-      url = json['@odata.nextLink'];
-    }
+    );
+
     this.output?.appendLine(`Loaded ${count} web resources.`);
+    vscode.window.showInformationMessage(`Loaded ${count} web resources.`);
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri: vscode.Uri.parse('crm:/') }]);
+    return count;
   }
 
   private _isExcluded(name: string): boolean {

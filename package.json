@@ -10,7 +10,10 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:dynamicsCrm.connect"
+    "onCommand:dynamicsCrm.connect",
+    "onView:connections",
+    "onCommand:dynamicsCrm.connectSaved",
+    "onCommand:dynamicsCrm.deleteToken"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -18,6 +21,14 @@
       {
         "command": "dynamicsCrm.connect",
         "title": "Dynamics CRM: Connect"
+      },
+      {
+        "command": "dynamicsCrm.connectSaved",
+        "title": "Dynamics CRM: Connect Saved"
+      },
+      {
+        "command": "dynamicsCrm.deleteToken",
+        "title": "Dynamics CRM: Delete Token"
       }
     ],
     "configuration": {
@@ -29,6 +40,31 @@
           "description": "Azure AD application (client) ID used for authentication"
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "webResourceManager",
+          "title": "Web Resource Manager"
+        }
+      ]
+    },
+    "views": {
+      "webResourceManager": [
+        {
+          "id": "connections",
+          "name": "Connections"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "dynamicsCrm.deleteToken",
+          "when": "view == connections && viewItem == connection",
+          "group": "inline"
+        }
+      ]
     }
   },
   "scripts": {

@@ -3,18 +3,30 @@ import { PublicClientApplication, DeviceCodeRequest } from '@azure/msal-node';
 import fetch from 'node-fetch';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import { CrmFileSystemProvider } from './crmFs';
 
 export function activate(context: vscode.ExtensionContext) {
   // Load environment variables from .env packaged with the extension
   dotenv.config({ path: path.join(context.extensionPath, '.env') });
 
   const output = vscode.window.createOutputChannel('Dynamics CRM');
+  const fsProvider = new CrmFileSystemProvider();
+  context.subscriptions.push(
+    vscode.workspace.registerFileSystemProvider('crm', fsProvider, { isReadonly: true })
+  );
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {
     const token = await login(context, output);
     if (token) {
       const instances = await listInstances(token, output);
-      await promptForInstance(context, instances);
+      const instance = await promptForInstance(context, instances);
+      if (instance) {
+        await fsProvider.load(token, instance.ApiUrl);
+        vscode.workspace.updateWorkspaceFolders(0, 0, {
+          uri: vscode.Uri.parse('crm:/'),
+          name: instance.FriendlyName ?? instance.UniqueName
+        });
+      }
     }
   });
 
@@ -107,7 +119,7 @@ async function listInstances(accessToken: string, output: vscode.OutputChannel):
 async function promptForInstance(
   context: vscode.ExtensionContext,
   instances: DiscoveryInstance[]
-): Promise<void> {
+): Promise<DiscoveryInstance | undefined> {
   const items = instances.map((i) => ({
     label: i.FriendlyName ?? i.UniqueName,
     description: i.UrlName,
@@ -119,7 +131,9 @@ async function promptForInstance(
   if (pick) {
     await context.globalState.update('selectedInstance', pick.instance.UrlName);
     vscode.window.showInformationMessage(`Selected ${pick.label}`);
+    return pick.instance;
   }
+  return undefined;
 }
 
 export function deactivate() {}

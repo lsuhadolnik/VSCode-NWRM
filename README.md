@@ -37,8 +37,9 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    ```
    Press `F5` in VS Code to start debugging.
    Once VS Code launches, run the **Dynamics CRM: Connect** command and choose
-   the environment you want to work with. A notification will copy the device
-   code to your clipboard and open the login page when you press **Enter**.
+   the environment you want to work with. A quick pick displays the device code
+   and copies it to your clipboard, opening the login page when you press
+   **Enter**.
    If anything goes wrong during sign in or environment discovery, check the
    **Dynamics CRM** output channel for details.
 

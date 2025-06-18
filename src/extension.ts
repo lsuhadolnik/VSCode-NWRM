@@ -40,15 +40,20 @@ async function login(context: vscode.ExtensionContext, output: vscode.OutputChan
   const request: DeviceCodeRequest = {
     scopes: ['https://globaldisco.crm.dynamics.com/.default'],
     deviceCodeCallback: async (response) => {
-      const open = 'Open browser';
       output.appendLine(`Device code: ${response.userCode}`);
       output.appendLine(`Verification URL: ${response.verificationUri}`);
-      const selection = await vscode.window.showInformationMessage(
-        `To sign in, a browser window will open. The code \u201c${response.userCode}\u201d will be copied to your clipboard.`,
-        { modal: true },
-        open
+      const pick = await vscode.window.showQuickPick(
+        [
+          {
+            label: response.userCode,
+            description: 'Press Enter to copy the code and open the browser'
+          }
+        ],
+        {
+          placeHolder: 'A browser window will open for sign in'
+        }
       );
-      if (selection === open && response.verificationUri) {
+      if (pick && response.verificationUri) {
         await vscode.env.clipboard.writeText(response.userCode);
         vscode.env.openExternal(vscode.Uri.parse(response.verificationUri));
         vscode.window.showInformationMessage('Device code copied to clipboard.');

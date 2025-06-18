@@ -35,14 +35,20 @@ export async function activate(context: vscode.ExtensionContext) {
     pendingInstance &&
     vscode.workspace.workspaceFolders?.some((f) => f.uri.scheme === 'crm')
   ) {
-    await fsProvider.load(pendingToken, pendingInstance.ApiUrl);
-    webResourcesProvider.refresh();
-    const name = `${pendingInstance.FriendlyName ?? pendingInstance.UniqueName} (${new URL(
-      pendingInstance.ApiUrl
-    ).host})`;
-    vscode.workspace.updateWorkspaceFolders(0, 1, { uri: vscode.Uri.parse('crm:/'), name });
-    await context.globalState.update('pendingToken', undefined);
-    await context.globalState.update('pendingInstance', undefined);
+    try {
+      await fsProvider.load(pendingToken, pendingInstance.ApiUrl);
+      webResourcesProvider.refresh();
+      const name = `${pendingInstance.FriendlyName ?? pendingInstance.UniqueName} (${new URL(
+        pendingInstance.ApiUrl
+      ).host})`;
+      vscode.workspace.updateWorkspaceFolders(0, 1, { uri: vscode.Uri.parse('crm:/'), name });
+    } catch (err: any) {
+      output.appendLine(`Failed to load pending connection: ${err}`);
+      vscode.window.showErrorMessage(`Failed to load web resources: ${err}`);
+    } finally {
+      await context.globalState.update('pendingToken', undefined);
+      await context.globalState.update('pendingInstance', undefined);
+    }
   }
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {

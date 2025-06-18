@@ -10,14 +10,35 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:dynamicsCrm.connect"
+    "onCommand:dynamicsCrm.connect",
+    "onView:connections",
+    "onView:webResources",
+    "onCommand:dynamicsCrm.connectSaved",
+    "onCommand:dynamicsCrm.deleteToken",
+    "onCommand:dynamicsCrm.addConnection",
+    "onFileSystem:crm",
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
+  "icon": "images/webresource.svg",
   "contributes": {
     "commands": [
       {
         "command": "dynamicsCrm.connect",
         "title": "Dynamics CRM: Connect"
+      },
+      {
+        "command": "dynamicsCrm.connectSaved",
+        "title": "Dynamics CRM: Connect Saved"
+      },
+      {
+        "command": "dynamicsCrm.deleteToken",
+        "title": "Dynamics CRM: Delete Token"
+      },
+      {
+        "command": "dynamicsCrm.addConnection",
+        "title": "Dynamics CRM: Add Connection",
+        "icon": "$(add)"
       }
     ],
     "configuration": {
@@ -29,6 +50,49 @@
           "description": "Azure AD application (client) ID used for authentication"
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "webResourceManager",
+          "title": "Web Resource Manager",
+          "icon": "images/webresource.svg"
+        }
+      ]
+    },
+    "views": {
+      "webResourceManager": [
+        {
+          "id": "connections",
+          "name": "Connections"
+        },
+        {
+          "id": "webResources",
+          "name": "Web Resources"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "dynamicsCrm.deleteToken",
+          "when": "view == connections && viewItem == connection",
+          "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "dynamicsCrm.addConnection",
+          "when": "view == connections",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "The extension can load web resources in untrusted workspaces"
     }
   },
   "scripts": {

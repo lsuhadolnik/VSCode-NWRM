@@ -29,17 +29,32 @@ export async function activate(context: vscode.ExtensionContext) {
   const pendingInstance = context.globalState.get<DiscoveryInstance>('pendingInstance');
   const pendingExpiry = context.globalState.get<number>('pendingExpires');
   if (pendingInstance) {
-    const token = await context.secrets.get('pendingToken');
-    if (token && pendingExpiry && pendingExpiry > Date.now()) {
-      await fsProvider.load(token, pendingInstance.ApiUrl);
-      vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, {
-        uri: vscode.Uri.parse('crm:/'),
-        name: `${pendingInstance.FriendlyName ?? pendingInstance.UniqueName} (${new URL(pendingInstance.ApiUrl).host})`
+    const applyConnection = async () => {
+      const token = await context.secrets.get('pendingToken');
+      if (token && pendingExpiry && pendingExpiry > Date.now()) {
+        await fsProvider.load(token, pendingInstance.ApiUrl);
+        vscode.workspace.updateWorkspaceFolders(
+          0,
+          vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0,
+          {
+            uri: vscode.Uri.parse('crm:/'),
+            name: `${pendingInstance.FriendlyName ?? pendingInstance.UniqueName} (${new URL(pendingInstance.ApiUrl).host})`
+          }
+        );
+      }
+      await context.secrets.delete('pendingToken');
+      await context.globalState.update('pendingInstance', undefined);
+      await context.globalState.update('pendingExpires', undefined);
+    };
+
+    if (vscode.workspace.isTrusted) {
+      await applyConnection();
+    } else {
+      const disposableTrust = vscode.workspace.onDidGrantWorkspaceTrust(async () => {
+        await applyConnection();
+        disposableTrust.dispose();
       });
     }
-    await context.secrets.delete('pendingToken');
-    await context.globalState.update('pendingInstance', undefined);
-    await context.globalState.update('pendingExpires', undefined);
   }
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {

@@ -71,6 +71,12 @@
       ]
     }
   },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "The extension can load web resources in untrusted workspaces"
+    }
+  },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",

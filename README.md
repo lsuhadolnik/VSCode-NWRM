@@ -42,6 +42,18 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    If anything goes wrong during sign in or environment discovery, check the
    **Dynamics CRM** output channel for details.
 
+### Environment Discovery
+
+The extension retrieves available environments using the [Global Discovery Service](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/discovery-service).
+It issues the following request to list instances:
+
+```http
+GET https://globaldisco.crm.dynamics.com/api/discovery/v2.0/Instances?$select=ApiUrl,FriendlyName,UniqueName,UrlName,Url HTTP/1.1
+Authorization: Bearer <access token>
+```
+
+The response contains environment metadata used to populate the quick pick menu.
+
 ### Azure App Registration
 
 1. Sign in to the [Azure Portal](https://portal.azure.com/) and open **Azure Active Directory** > **App registrations**.

@@ -74,16 +74,17 @@ async function login(context: vscode.ExtensionContext, output: vscode.OutputChan
 }
 
 interface DiscoveryInstance {
+  ApiUrl: string;
   UniqueName: string;
   UrlName: string;
   FriendlyName?: string;
-  WebUrl?: string;
+  Url?: string;
 }
 
 async function listInstances(accessToken: string, output: vscode.OutputChannel): Promise<DiscoveryInstance[]> {
   output.appendLine('Querying discovery service for environments...');
   const resp = await fetch(
-    'https://globaldisco.crm.dynamics.com/api/discovery/v2.0/Instances?api-version=9.1',
+    'https://globaldisco.crm.dynamics.com/api/discovery/v2.0/Instances?$select=ApiUrl,FriendlyName,UniqueName,UrlName,Url',
     {
       headers: { Authorization: `Bearer ${accessToken}` }
     }

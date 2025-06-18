@@ -1,0 +1,52 @@
+{
+  "name": "dynamics-crm-webresources",
+  "displayName": "Dynamics CRM Web Resources Manager",
+  "description": "Manage Dynamics CRM Web Resources from VS Code.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:dynamicsCrm.connect"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dynamicsCrm.connect",
+        "title": "Dynamics CRM: Connect"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Dynamics CRM Web Resources Manager",
+      "properties": {
+        "dynamicsCrm.clientId": {
+          "type": "string",
+          "description": "Azure AD application (client) ID used for authentication"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build": "npm run compile",
+    "test": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^18.18.0",
+    "@types/node-fetch": "^2.6.12",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^3.6.0",
+    "dotenv": "^16.5.0",
+    "node-fetch": "^2.7.0"
+  }
+}

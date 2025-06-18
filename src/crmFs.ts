@@ -332,6 +332,12 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     return entry;
   }
 
+  async publish(uri: vscode.Uri): Promise<void> {
+    const entry = this._lookupAsFile(uri);
+    this.output?.appendLine(`Publishing ${uri.path}`);
+    await this._publish(entry.id);
+  }
+
   private _getTypeFromExtension(name: string): number {
     if (name.endsWith('.html') || name.endsWith('.htm')) {
       return 1;

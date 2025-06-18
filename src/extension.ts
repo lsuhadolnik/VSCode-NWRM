@@ -7,7 +7,7 @@ import * as fs from 'fs/promises';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
 import { ConnectionsProvider, ConnectionItem } from './connections';
-import { WebResourcesProvider } from './webResources';
+import { WebResourcesProvider, WebResourceItem } from './webResources';
 
 interface AuthResult {
   pca: PublicClientApplication;
@@ -133,7 +133,38 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand('dynamicsCrm.connect');
   });
 
-  context.subscriptions.push(disposable, connectSavedCmd, deleteTokenCmd, addConnectionCmd, output);
+  const publishCmd = vscode.commands.registerCommand(
+    'dynamicsCrm.publishWebResource',
+    async (resource?: vscode.Uri | WebResourceItem) => {
+      let uri: vscode.Uri | undefined;
+      if (resource instanceof vscode.Uri) {
+        uri = resource;
+      } else if (resource instanceof WebResourceItem) {
+        uri = resource.uri;
+      } else if (vscode.window.activeTextEditor) {
+        uri = vscode.window.activeTextEditor.document.uri;
+      }
+      if (!uri || uri.scheme !== 'crm') {
+        vscode.window.showErrorMessage('No web resource selected');
+        return;
+      }
+      try {
+        await fsProvider.publish(uri);
+        vscode.window.showInformationMessage(`Published ${uri.path}`);
+      } catch (err: any) {
+        vscode.window.showErrorMessage(`Failed to publish ${uri.path}: ${err}`);
+      }
+    },
+  );
+
+  context.subscriptions.push(
+    disposable,
+    connectSavedCmd,
+    deleteTokenCmd,
+    addConnectionCmd,
+    publishCmd,
+    output,
+  );
 
   await tryLoadWorkspace(context, fsProvider, webResourcesProvider, connectionsProvider, output);
 }

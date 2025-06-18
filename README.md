@@ -7,6 +7,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Interactive authentication** – Sign in to your Dynamics CRM tenant and automatically discover all environments using the Discovery Service. After signing in, you're prompted to choose the environment to connect to. A prompt copies the device code to your clipboard and opens the login page for you.
 - **Virtual file system** – Browse and edit Web Resources as regular files in a custom tree view.
 - **Publish on save** – Press `Ctrl+S` to publish updates back to Dynamics CRM.
+- **Publish command** – Publish individual Web Resources from the context menu or Command Palette.
 - **Create and rename** – Add new files and folders and rename existing Web Resources directly from VS Code.
 - **Sidebar integration** – A dedicated view allows you to connect to an environment and manage Web Resources.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.

@@ -39,6 +39,10 @@
         "command": "dynamicsCrm.addConnection",
         "title": "Dynamics CRM: Add Connection",
         "icon": "$(add)"
+      },
+      {
+        "command": "dynamicsCrm.publishWebResource",
+        "title": "Dynamics CRM: Publish Web Resource"
       }
     ],
     "configuration": {
@@ -77,6 +81,11 @@
         {
           "command": "dynamicsCrm.deleteToken",
           "when": "view == connections && viewItem == connection",
+          "group": "inline"
+        },
+        {
+          "command": "dynamicsCrm.publishWebResource",
+          "when": "view == webResources && viewItem == file",
           "group": "inline"
         }
       ],

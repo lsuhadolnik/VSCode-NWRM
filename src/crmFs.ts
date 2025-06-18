@@ -62,7 +62,9 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${file.id})?$select=content`;
     const headers = { Authorization: `Bearer ${this.accessToken}` };
     this.output?.appendLine(`GET ${url}`);
-    this.output?.appendLine(`Request Headers: ${JSON.stringify(headers)}`);
+    this.output?.appendLine(
+      `Request Headers: ${JSON.stringify({ Authorization: 'Bearer ***' })}`,
+    );
     const resp = await fetch(url, { headers });
     if (!resp.ok) {
       const body = await resp.text();
@@ -106,6 +108,14 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       const type = this._getTypeFromExtension(name);
       const url = `${this.apiUrl}/api/data/v9.2/webresourceset`;
       this.output?.appendLine(`POST ${url}`);
+      this.output?.appendLine(
+        `Request Body: ${JSON.stringify({
+          name,
+          displayname: name,
+          webresourcetype: type,
+          contentLength: data.length,
+        })}`,
+      );
       const resp = await fetch(url, {
         method: 'POST',
         headers,
@@ -235,7 +245,9 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         const headers = { Authorization: `Bearer ${this.accessToken}` };
         while (url) {
           this.output?.appendLine(`GET ${url}`);
-          this.output?.appendLine(`Request Headers: ${JSON.stringify(headers)}`);
+          this.output?.appendLine(
+            `Request Headers: ${JSON.stringify({ Authorization: 'Bearer ***' })}`,
+          );
           const resp = await fetch(url, { headers });
           if (!resp.ok) {
             const body = await resp.text();

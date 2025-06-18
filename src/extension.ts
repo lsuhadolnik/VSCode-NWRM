@@ -68,7 +68,9 @@ export async function activate(context: vscode.ExtensionContext) {
   const connectionsProvider = new ConnectionsProvider(context);
   const webResourcesProvider = new WebResourcesProvider(fsProvider);
   context.subscriptions.push(
-    vscode.workspace.registerFileSystemProvider('crm', fsProvider, { isReadonly: true })
+    vscode.workspace.registerFileSystemProvider('crm', fsProvider, {
+      isReadonly: false,
+    })
   );
 
   vscode.window.registerTreeDataProvider('connections', connectionsProvider);

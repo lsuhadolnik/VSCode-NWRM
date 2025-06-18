@@ -98,6 +98,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
 
     let url = `${this.apiUrl}/api/data/v9.2/webresourceset?$select=webresourceid,name`;
     const headers = { Authorization: `Bearer ${this.accessToken}` };
+    let count = 0;
     while (url) {
       this.output?.appendLine(`GET ${url}`);
       this.output?.appendLine(`Request Headers: ${JSON.stringify(headers)}`);
@@ -115,9 +116,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
           continue;
         }
         this._addEntry(item.name, item.webresourceid);
+        count++;
       }
       url = json['@odata.nextLink'];
     }
+    this.output?.appendLine(`Loaded ${count} web resources.`);
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri: vscode.Uri.parse('crm:/') }]);
   }
 

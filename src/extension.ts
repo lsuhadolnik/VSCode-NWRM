@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
         await fsProvider.load(token, instance.ApiUrl);
         vscode.workspace.updateWorkspaceFolders(0, 0, {
           uri: vscode.Uri.parse('crm:/'),
-          name: instance.FriendlyName ?? instance.UniqueName
+          name: `${instance.FriendlyName ?? instance.UniqueName} (${new URL(instance.ApiUrl).host})`
         });
         await saveConnection(context, instance, token, tokenExpires);
         connectionsProvider.refresh();
@@ -56,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
     await fsProvider.load(token, item.instance.ApiUrl);
     vscode.workspace.updateWorkspaceFolders(0, 0, {
       uri: vscode.Uri.parse('crm:/'),
-      name: item.instance.FriendlyName ?? item.instance.UniqueName
+      name: `${item.instance.FriendlyName ?? item.instance.UniqueName} (${new URL(item.instance.ApiUrl).host})`
     });
   });
 
@@ -210,6 +210,7 @@ async function promptForInstance(
   const items = instances.map((i) => ({
     label: i.FriendlyName ?? i.UniqueName,
     description: i.UrlName,
+    detail: i.ApiUrl,
     instance: i
   }));
   const pick = await vscode.window.showQuickPick(items, {

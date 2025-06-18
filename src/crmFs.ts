@@ -129,10 +129,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this.output?.appendLine(`Loaded ${count} web resources.`);
     const action = await vscode.window.showInformationMessage(
       `Loaded ${count} web resources.`,
-      'Show Explorer'
+      'Show Web Resources'
     );
-    if (action === 'Show Explorer') {
-      vscode.commands.executeCommand('workbench.view.explorer');
+    if (action === 'Show Web Resources') {
+      vscode.commands.executeCommand('workbench.view.extension.webResourceManager');
+      vscode.commands.executeCommand('webResources.focus');
     }
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri: vscode.Uri.parse('crm:/') }]);
     return count;

@@ -12,8 +12,8 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.
 - **Add connection button** – Use the **+ Add Connection** action in the sidebar to sign in to another environment.
 - **Open in current workspace** – After choosing an environment, Web Resources load in a `crm:/` workspace and appear in the **Web Resources** sidebar.
-- **Load notification** – When Web Resources finish loading, a notification offers to open the Explorer view.
-- **Automatic workspace creation** – If no folder is open, connecting opens a temporary `crm:/` workspace.
+- **Load notification** – When Web Resources finish loading, a notification offers to open the Web Resources view.
+- **Automatic workspace creation** – If no folder is open, connecting automatically adds a `crm:/` workspace folder.
 
 ## Getting Started
 

@@ -10,7 +10,7 @@ export function activate(context: vscode.ExtensionContext) {
   dotenv.config({ path: path.join(context.extensionPath, '.env') });
 
   const output = vscode.window.createOutputChannel('Dynamics CRM');
-  const fsProvider = new CrmFileSystemProvider();
+  const fsProvider = new CrmFileSystemProvider(output);
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider('crm', fsProvider, { isReadonly: true })
   );

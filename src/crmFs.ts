@@ -23,6 +23,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   private root: DirEntry = { type: vscode.FileType.Directory, children: new Map() };
   private accessToken?: string;
   private apiUrl?: string;
+  private output?: vscode.OutputChannel;
+
+  constructor(output?: vscode.OutputChannel) {
+    this.output = output;
+  }
 
   watch(): vscode.Disposable {
     // polling not implemented
@@ -53,6 +58,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     if (!this.accessToken || !this.apiUrl) {
       throw vscode.FileSystemError.Unavailable('Not connected');
     }
+    this.output?.appendLine(`Fetching ${uri.path}`);
     const resp = await fetch(
       `${this.apiUrl}/api/data/v9.2/webresourceset(${file.id})?$select=content`,
       {
@@ -60,6 +66,10 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       }
     );
     if (!resp.ok) {
+      const body = await resp.text();
+      this.output?.appendLine(
+        `Failed to fetch ${uri.path}: ${resp.status} ${body}`
+      );
       throw vscode.FileSystemError.Unavailable(`Failed to fetch ${uri.path}`);
     }
     const json = await resp.json();
@@ -85,13 +95,19 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this.accessToken = accessToken;
     this.apiUrl = apiUrl.replace(/\/?$/, '');
     this.root.children.clear();
+    this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
 
     let url = `${this.apiUrl}/api/data/v9.2/webresourceset?$select=webresourceid,name`;
     while (url) {
+      this.output?.appendLine(`GET ${url}`);
       const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (!resp.ok) {
+        const body = await resp.text();
+        this.output?.appendLine(
+          `Failed to list webresources: ${resp.status} ${body}`
+        );
         throw new Error(`Failed to list webresources: ${resp.status}`);
       }
       const json = await resp.json();

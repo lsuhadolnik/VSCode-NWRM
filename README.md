@@ -42,6 +42,9 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    **Enter**.
    If anything goes wrong during sign in or environment discovery, check the
    **Dynamics CRM** output channel for details.
+   You can open the output view with `Ctrl+Shift+U` (View → Output) and choose
+   **Dynamics CRM** from the channel dropdown to see detailed logs, including web
+   resource load errors.
 
 ### Environment Discovery
 

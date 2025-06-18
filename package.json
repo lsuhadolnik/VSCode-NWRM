@@ -13,7 +13,9 @@
     "onCommand:dynamicsCrm.connect",
     "onView:connections",
     "onCommand:dynamicsCrm.connectSaved",
-    "onCommand:dynamicsCrm.deleteToken"
+    "onCommand:dynamicsCrm.deleteToken",
+    "onFileSystem:crm",
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {

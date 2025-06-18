@@ -10,6 +10,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Sidebar integration** – A dedicated view allows you to connect to an environment and manage Web Resources.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
 - **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.
+- **Separate workspace per environment** – After choosing an environment, a new window opens with the Web Resources loaded so the original window stays untouched.
 
 ## Getting Started
 
@@ -40,8 +41,8 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    Once VS Code launches, run the **Dynamics CRM: Connect** command and choose
    the environment you want to work with. A quick pick displays the device code
    and copies it to your clipboard, opening the login page when you press
-   **Enter**.
-   If anything goes wrong during sign in or environment discovery, check the
+  **Enter**.
+  If anything goes wrong during sign in or environment discovery, check the
   **Dynamics CRM** output channel for details.
   You can open the output view with `Ctrl+Shift+U` (View → Output) and choose
   **Dynamics CRM** from the channel dropdown to see detailed logs, including web
@@ -49,6 +50,7 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   troubleshooting authentication problems easier.
   Saved connections with valid tokens appear in the **Web Resource Manager** sidebar so you can quickly reconnect or remove them.
   After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
+  A new VS Code window opens with a workspace containing your Web Resources so the original window remains clean.
 
 ### Environment Discovery
 

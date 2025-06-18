@@ -1,12 +1,13 @@
 # Dynamics CRM Web Resources Manager VSCode Extension
 
-This extension provides an integrated experience for managing Dynamics 365 (CRM) Web Resources directly from Visual Studio Code. It connects to your CRM instance, discovers all available environments and exposes Web Resources as virtual files in a read-only filesystem. You can open, edit, and save changes back to Dynamics without leaving VS Code.
+This extension provides an integrated experience for managing Dynamics 365 (CRM) Web Resources directly from Visual Studio Code. It connects to your CRM instance, discovers all available environments and exposes Web Resources as virtual files in a writable virtual filesystem. You can open, edit, and save changes back to Dynamics without leaving VS Code.
 
 ## Features
 
 - **Interactive authentication** – Sign in to your Dynamics CRM tenant and automatically discover all environments using the Discovery Service. After signing in, you're prompted to choose the environment to connect to. A prompt copies the device code to your clipboard and opens the login page for you.
 - **Virtual file system** – Browse and edit Web Resources as regular files in a custom tree view.
 - **Publish on save** – Press `Ctrl+S` to publish updates back to Dynamics CRM.
+- **Create and rename** – Add new files and folders and rename existing Web Resources directly from VS Code.
 - **Sidebar integration** – A dedicated view allows you to connect to an environment and manage Web Resources.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
 - **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.

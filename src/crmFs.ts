@@ -126,14 +126,29 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
           content: data,
         }),
       });
+      const rawHeaders: Record<string, string> = {};
+      resp.headers.forEach((v, k) => {
+        rawHeaders[k] = v;
+      });
+      const text = await resp.text();
+      this.output?.appendLine(`Response Headers: ${JSON.stringify(rawHeaders)}`);
+      this.output?.appendLine(`Response Body: ${text}`);
       if (!resp.ok) {
-        const body = await resp.text();
-        this.output?.appendLine(`Failed to create ${uri.path}: ${resp.status} ${body}`);
+        this.output?.appendLine(`Failed to create ${uri.path}: ${resp.status} ${text}`);
         throw vscode.FileSystemError.Unavailable(`Failed to create ${uri.path}`);
       }
-      const json = await resp.json();
-      const id = json.webresourceid as string;
-      this._addEntry(name, id);
+      let id: string | undefined;
+      if (text) {
+        try {
+          const json = JSON.parse(text);
+          id = json.webresourceid as string;
+        } catch {
+          // ignore parse errors
+        }
+      }
+      if (id) {
+        this._addEntry(name, id);
+      }
     } else {
       throw vscode.FileSystemError.FileNotFound(uri);
     }

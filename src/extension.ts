@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { PublicClientApplication, DeviceCodeRequest, AuthenticationResult, AccountInfo } from '@azure/msal-node';
 import fetch from 'node-fetch';
 import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs/promises';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
 import { ConnectionsProvider, ConnectionItem } from './connections';
@@ -10,6 +12,51 @@ import { WebResourcesProvider } from './webResources';
 interface AuthResult {
   pca: PublicClientApplication;
   result: AuthenticationResult;
+}
+
+async function createWorkspaceFile(instance: DiscoveryInstance): Promise<string> {
+  const dir = path.join(os.homedir(), 'D365-NWRM');
+  await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, `${instance.UrlName}.code-workspace`);
+  const content = JSON.stringify({ folders: [{ uri: 'crm:/' }] }, null, 2);
+  await fs.writeFile(file, content);
+  return file;
+}
+
+async function tryLoadWorkspace(
+  context: vscode.ExtensionContext,
+  fsProvider: CrmFileSystemProvider,
+  webResourcesProvider: WebResourcesProvider,
+  connectionsProvider: ConnectionsProvider,
+  output: vscode.OutputChannel
+) {
+  const ws = vscode.workspace.workspaceFile;
+  if (!ws) {
+    return;
+  }
+  const name = path.basename(ws.fsPath, '.code-workspace');
+  const token = await context.secrets.get(`token:${name}`);
+  const expiry = context.globalState.get<number>(`tokenExpires:${name}`) ?? 0;
+  const saved =
+    context.globalState.get<Record<string, DiscoveryInstance>>("savedEnvironments") ?? {};
+  const instance = saved[name];
+  if (token && expiry > Date.now() && instance) {
+    const label = `${instance.FriendlyName ?? instance.UniqueName} (${new URL(
+      instance.ApiUrl
+    ).host})`;
+    if (
+      !vscode.workspace.workspaceFolders ||
+      !vscode.workspace.workspaceFolders.find((f) => f.uri.scheme === 'crm')
+    ) {
+      vscode.workspace.updateWorkspaceFolders(0, 0, {
+        uri: vscode.Uri.parse('crm:/'),
+        name: label,
+      });
+    }
+    await fsProvider.load(token, instance.ApiUrl);
+    webResourcesProvider.refresh();
+    connectionsProvider.refresh();
+  }
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -45,47 +92,31 @@ export async function activate(context: vscode.ExtensionContext) {
         const token = envTokenResult.accessToken;
         const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
         await saveConnection(context, instance, token, tokenExpires);
-        const name = `${instance.FriendlyName ?? instance.UniqueName} (${new URL(instance.ApiUrl).host})`;
-        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-          vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.parse('crm:/'), name });
-        } else {
-          const existing = vscode.workspace.workspaceFolders.findIndex((f) => f.uri.scheme === 'crm');
-          if (existing >= 0) {
-            vscode.workspace.updateWorkspaceFolders(existing, 1, { uri: vscode.Uri.parse('crm:/'), name });
-          } else {
-            const index = vscode.workspace.workspaceFolders.length;
-            vscode.workspace.updateWorkspaceFolders(index, 0, { uri: vscode.Uri.parse('crm:/'), name });
-          }
-        }
-        await fsProvider.load(token, instance.ApiUrl);
-        webResourcesProvider.refresh();
-        connectionsProvider.refresh();
+        const workspaceFile = await createWorkspaceFile(instance);
+        await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspaceFile), true);
       }
     }
   });
 
-  const connectSavedCmd = vscode.commands.registerCommand('dynamicsCrm.connectSaved', async (item: ConnectionItem) => {
-    const token = await context.secrets.get(`token:${item.instance.UrlName}`);
-    const expiry = context.globalState.get<number>(`tokenExpires:${item.instance.UrlName}`) ?? 0;
-    if (!token || expiry <= Date.now()) {
-      vscode.window.showErrorMessage('Saved token has expired.');
-      return;
-    }
-    const name = `${item.instance.FriendlyName ?? item.instance.UniqueName} (${new URL(item.instance.ApiUrl).host})`;
-    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-      vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.parse('crm:/'), name });
-    } else {
-      const existing = vscode.workspace.workspaceFolders.findIndex((f) => f.uri.scheme === 'crm');
-      if (existing >= 0) {
-        vscode.workspace.updateWorkspaceFolders(existing, 1, { uri: vscode.Uri.parse('crm:/'), name });
-      } else {
-        const index = vscode.workspace.workspaceFolders.length;
-        vscode.workspace.updateWorkspaceFolders(index, 0, { uri: vscode.Uri.parse('crm:/'), name });
+  const connectSavedCmd = vscode.commands.registerCommand(
+    'dynamicsCrm.connectSaved',
+    async (item: ConnectionItem) => {
+      const token = await context.secrets.get(`token:${item.instance.UrlName}`);
+      const expiry =
+        context.globalState.get<number>(`tokenExpires:${item.instance.UrlName}`) ?? 0;
+      if (!token || expiry <= Date.now()) {
+        vscode.window.showErrorMessage('Saved token has expired.');
+        return;
       }
+      await saveConnection(context, item.instance, token, new Date(expiry));
+      const workspaceFile = await createWorkspaceFile(item.instance);
+      await vscode.commands.executeCommand(
+        'vscode.openFolder',
+        vscode.Uri.file(workspaceFile),
+        true
+      );
     }
-    await fsProvider.load(token, item.instance.ApiUrl);
-    webResourcesProvider.refresh();
-  });
+  );
 
   const deleteTokenCmd = vscode.commands.registerCommand('dynamicsCrm.deleteToken', async (item: ConnectionItem) => {
     await context.secrets.delete(`token:${item.instance.UrlName}`);
@@ -101,6 +132,8 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(disposable, connectSavedCmd, deleteTokenCmd, addConnectionCmd, output);
+
+  await tryLoadWorkspace(context, fsProvider, webResourcesProvider, connectionsProvider, output);
 }
 
 

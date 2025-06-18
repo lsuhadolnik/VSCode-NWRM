@@ -24,7 +24,22 @@ export async function activate(context: vscode.ExtensionContext) {
 
   vscode.window.registerTreeDataProvider('connections', connectionsProvider);
 
-
+  // if the window was reopened with the crm folder, load pending connection
+  const pendingToken = context.globalState.get<string>('pendingToken');
+  const pendingInstance = context.globalState.get<DiscoveryInstance>('pendingInstance');
+  if (
+    pendingToken &&
+    pendingInstance &&
+    vscode.workspace.workspaceFolders?.some((f) => f.uri.scheme === 'crm')
+  ) {
+    await fsProvider.load(pendingToken, pendingInstance.ApiUrl);
+    const name = `${pendingInstance.FriendlyName ?? pendingInstance.UniqueName} (${new URL(
+      pendingInstance.ApiUrl
+    ).host})`;
+    vscode.workspace.updateWorkspaceFolders(0, 1, { uri: vscode.Uri.parse('crm:/'), name });
+    await context.globalState.update('pendingToken', undefined);
+    await context.globalState.update('pendingInstance', undefined);
+  }
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {
     const auth = await login(context, output);
@@ -43,6 +58,12 @@ export async function activate(context: vscode.ExtensionContext) {
         const token = envTokenResult.accessToken;
         const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
         await saveConnection(context, instance, token, tokenExpires);
+        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+          await context.globalState.update('pendingToken', token);
+          await context.globalState.update('pendingInstance', instance);
+          vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.parse('crm:/'), false);
+          return;
+        }
         await fsProvider.load(token, instance.ApiUrl);
         const name = `${instance.FriendlyName ?? instance.UniqueName} (${new URL(instance.ApiUrl).host})`;
         const existing = vscode.workspace.workspaceFolders?.findIndex((f) => f.uri.scheme === 'crm') ?? -1;
@@ -62,6 +83,12 @@ export async function activate(context: vscode.ExtensionContext) {
     const expiry = context.globalState.get<number>(`tokenExpires:${item.instance.UrlName}`) ?? 0;
     if (!token || expiry <= Date.now()) {
       vscode.window.showErrorMessage('Saved token has expired.');
+      return;
+    }
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+      await context.globalState.update('pendingToken', token);
+      await context.globalState.update('pendingInstance', item.instance);
+      vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.parse('crm:/'), false);
       return;
     }
     await fsProvider.load(token, item.instance.ApiUrl);

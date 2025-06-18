@@ -157,12 +157,24 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const saveListener = vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    if (doc.uri.scheme === 'crm') {
+      try {
+        await fsProvider.publish(doc.uri);
+        output.appendLine(`Auto-published ${doc.uri.path}`);
+      } catch (err: any) {
+        output.appendLine(`Auto-publish failed for ${doc.uri.path}: ${err}`);
+      }
+    }
+  });
+
   context.subscriptions.push(
     disposable,
     connectSavedCmd,
     deleteTokenCmd,
     addConnectionCmd,
     publishCmd,
+    saveListener,
     output,
   );
 

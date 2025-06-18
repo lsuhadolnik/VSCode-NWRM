@@ -101,9 +101,8 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         this.output?.appendLine(`Failed to update ${uri.path}: ${resp.status} ${body}`);
         throw vscode.FileSystemError.Unavailable(`Failed to update ${uri.path}`);
       }
-      await this._publish(existing.id);
     } else if (!existing && options.create) {
-      const name = uri.path.slice(1);
+      const name = uri.path.replace(/^\/+/, '');
       const type = this._getTypeFromExtension(name);
       const url = `${this.apiUrl}/api/data/v9.2/webresourceset`;
       this.output?.appendLine(`POST ${url}`);
@@ -125,7 +124,6 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       const json = await resp.json();
       const id = json.webresourceid as string;
       this._addEntry(name, id);
-      await this._publish(id);
     } else {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
@@ -192,7 +190,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       if (!this.accessToken || !this.apiUrl) {
         throw vscode.FileSystemError.Unavailable('Not connected');
       }
-      const name = newUri.path.slice(1);
+      const name = newUri.path.replace(/^\/+/, '');
       const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
       this.output?.appendLine(`PATCH ${url}`);
       const resp = await fetch(url, {

@@ -1,10 +1,15 @@
 import * as vscode from 'vscode';
-import { PublicClientApplication, DeviceCodeRequest, AuthenticationResult } from '@azure/msal-node';
+import { PublicClientApplication, DeviceCodeRequest, AuthenticationResult, AccountInfo } from '@azure/msal-node';
 import fetch from 'node-fetch';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
 import { ConnectionsProvider, ConnectionItem } from './connections';
+
+interface AuthResult {
+  pca: PublicClientApplication;
+  result: AuthenticationResult;
+}
 
 export function activate(context: vscode.ExtensionContext) {
   // Load environment variables from .env packaged with the extension
@@ -20,13 +25,16 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider('connections', connectionsProvider);
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {
-    const result = await login(context, output);
-    if (result) {
-      const token = result.accessToken;
-      const tokenExpires = result.expiresOn ?? new Date(Date.now() + 3600 * 1000);
-      const instances = await listInstances(token, output);
+    const auth = await login(context, output);
+    if (auth) {
+      const { pca, result } = auth;
+      const discoveryToken = result.accessToken;
+      const instances = await listInstances(discoveryToken, output);
       const instance = await promptForInstance(context, instances);
-      if (instance) {
+      if (instance && result.account) {
+        const envTokenResult = await acquireTokenForResource(pca, result.account, instance.ApiUrl, output);
+        const token = envTokenResult.accessToken;
+        const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
         await fsProvider.load(token, instance.ApiUrl);
         vscode.workspace.updateWorkspaceFolders(0, 0, {
           uri: vscode.Uri.parse('crm:/'),
@@ -65,7 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 
-async function login(context: vscode.ExtensionContext, output: vscode.OutputChannel): Promise<AuthenticationResult | undefined> {
+async function login(context: vscode.ExtensionContext, output: vscode.OutputChannel): Promise<AuthResult | undefined> {
   const config = vscode.workspace.getConfiguration('dynamicsCrm');
   const envClientId = process.env.DYNAMICS_CRM_CLIENT_ID;
   const clientId = envClientId ?? config.get<string>('clientId');
@@ -114,11 +122,58 @@ async function login(context: vscode.ExtensionContext, output: vscode.OutputChan
     await context.globalState.update('accessToken', result.accessToken);
     vscode.window.showInformationMessage('Signed in to Dynamics CRM');
     output.appendLine('Authentication successful.');
-    return result;
+    return { pca, result };
   } catch (err: any) {
     output.appendLine(`Authentication failed: ${err}`);
     vscode.window.showErrorMessage(`Failed to sign in: ${err}`);
     return undefined;
+  }
+}
+
+async function acquireTokenForResource(
+  pca: PublicClientApplication,
+  account: AccountInfo,
+  resourceUrl: string,
+  output: vscode.OutputChannel
+): Promise<AuthenticationResult> {
+  const scopes = [`${resourceUrl.replace(/\/?$/, '')}/.default`];
+  try {
+    output.appendLine(`Acquiring token silently for ${resourceUrl}`);
+    const result = await pca.acquireTokenSilent({ account, scopes });
+    if (!result) {
+      throw new Error('No token returned');
+    }
+    return result;
+  } catch (err) {
+    output.appendLine(`Silent token acquisition failed: ${err}`);
+    const request: DeviceCodeRequest = {
+      scopes,
+      deviceCodeCallback: async (response) => {
+        output.appendLine(`Device code: ${response.userCode}`);
+        output.appendLine(`Verification URL: ${response.verificationUri}`);
+        const pick = await vscode.window.showQuickPick(
+          [
+            {
+              label: response.userCode,
+              description: 'Press Enter to copy the code and open the browser',
+            },
+          ],
+          {
+            placeHolder: 'A browser window will open for sign in',
+          }
+        );
+        if (pick && response.verificationUri) {
+          await vscode.env.clipboard.writeText(response.userCode);
+          vscode.env.openExternal(vscode.Uri.parse(response.verificationUri));
+          vscode.window.showInformationMessage('Device code copied to clipboard.');
+        }
+      },
+    };
+    const result = await pca.acquireTokenByDeviceCode(request);
+    if (!result) {
+      throw new Error('No token returned');
+    }
+    return result;
   }
 }
 

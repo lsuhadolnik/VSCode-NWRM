@@ -48,6 +48,7 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   resource load errors. Each HTTP request is logged with headers to make
   troubleshooting authentication problems easier.
   Saved connections with valid tokens appear in the **Web Resource Manager** sidebar so you can quickly reconnect or remove them.
+  After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
 
 ### Environment Discovery
 

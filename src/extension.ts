@@ -33,8 +33,7 @@ async function tryLoadFolder(
     context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
   const instance = saved[env];
   if (token && expiry > Date.now() && instance) {
-    fsProvider.setBasePath(folder.uri);
-    await fsProvider.load(token, instance.ApiUrl, folder.uri);
+    fsProvider.connect(token, instance.ApiUrl, folder.uri);
     connectionsProvider.refresh();
   }
 }
@@ -47,12 +46,6 @@ export async function activate(context: vscode.ExtensionContext) {
   const fsProvider = new CrmFileSystemProvider(output);
   const connectionsProvider = new ConnectionsProvider(context);
 
-  const current = vscode.workspace.workspaceFolders?.find(
-    (f) => f.uri.scheme === 'd365-nwrm',
-  );
-  if (current) {
-    fsProvider.setBasePath(current.uri);
-  }
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider('d365-nwrm', fsProvider, {
       isReadonly: false,

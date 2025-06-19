@@ -10,13 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:dynamicsCrm.connect",
-    "onView:connections",
-    "onCommand:dynamicsCrm.deleteToken",
-    "onCommand:dynamicsCrm.addConnection",
-    "onCommand:dynamicsCrm.openEnvironment",
-    "onFileSystem:d365-nwrm",
-    "*"
+    "onFileSystem:d365-nwrm"
   ],
   "main": "./out/extension.js",
   "icon": "images/webresource.svg",

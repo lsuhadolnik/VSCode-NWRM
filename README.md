@@ -15,6 +15,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
 - **Reload command** – Refresh the list of web resources on demand.
 - **Type filter** – Limit loaded web resources by extension (JS, HTML, CSS, ...).
+- **Lazy loading** – Web Resources are fetched the first time you open the folder.
 
 ## Getting Started
 
@@ -57,8 +58,8 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
   Selecting an environment opens a virtual folder using the `d365-nwrm:` scheme
   (for example `d365-nwrm://org.crm.dynamics.com`) where the Web Resources are
-  shown.
-  If prompted to trust the folder, choose **Yes** and the resources will load automatically.
+  shown. If prompted to trust the folder, choose **Yes**. Web Resources are
+  loaded the first time you expand the folder.
 
 ### Environment Discovery
 

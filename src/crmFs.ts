@@ -27,10 +27,19 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   private basePath = '';
   private rootUri?: vscode.Uri;
   private allowedExts: Set<string> = new Set();
+  private loaded = false;
   private output?: vscode.OutputChannel;
 
   constructor(output?: vscode.OutputChannel) {
     this.output = output;
+  }
+
+  connect(accessToken: string, apiUrl: string, root: vscode.Uri): void {
+    this.accessToken = accessToken;
+    this.apiUrl = apiUrl.replace(/\/?$/, '');
+    this.setBasePath(root);
+    this.root.children.clear();
+    this.loaded = false;
   }
 
   setBasePath(uri: vscode.Uri): void {
@@ -54,6 +63,12 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this.allowedExts = new Set(exts.map((e) => e.toLowerCase()));
   }
 
+  private async _ensureLoaded(): Promise<void> {
+    if (!this.loaded) {
+      await this.reload();
+    }
+  }
+
   watch(): vscode.Disposable {
     // polling not implemented
     return new vscode.Disposable(() => {});
@@ -72,10 +87,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     };
   }
 
-  readDirectory(uri: vscode.Uri): [string, vscode.FileType][] {
+  async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
     this.output?.appendLine(
       `readDirectory ${uri.toString()} -> ${this._normalizePath(uri)}`,
     );
+    await this._ensureLoaded();
     const entry = this._lookupAsDirectory(uri);
     return Array.from(entry.children).map(([name, child]) => [name, child.type]);
   }
@@ -345,13 +361,13 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, oldUri, newUri } as any]);
   }
 
-  async load(accessToken: string, apiUrl: string, root: vscode.Uri): Promise<number> {
-    this.accessToken = accessToken;
-    this.apiUrl = apiUrl.replace(/\/?$/, '');
-    this.setBasePath(root);
+  private async _fetchResources(): Promise<number> {
+    if (!this.accessToken || !this.apiUrl || !this.rootUri) {
+      return 0;
+    }
     this.root.children.clear();
     this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
-    this.output?.appendLine(`Root URI ${root.toString()} basePath ${this.basePath}`);
+    this.output?.appendLine(`Root URI ${this.rootUri.toString()} basePath ${this.basePath}`);
 
     let count = 0;
     await vscode.window.withProgress(
@@ -404,7 +420,9 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     if (!this.rootUri) {
       return 0;
     }
-    return this.load(this.accessToken, this.apiUrl, this.rootUri);
+    const count = await this._fetchResources();
+    this.loaded = true;
+    return count;
   }
 
   private _isExcluded(name: string): boolean {

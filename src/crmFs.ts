@@ -17,26 +17,34 @@ interface FileEntry {
 }
 type Entry = DirEntry | FileEntry;
 
+import { ConnectionsProvider } from './connections';
+
 export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   private _onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._onDidChangeFile.event;
 
   private root: DirEntry = { type: vscode.FileType.Directory, children: new Map() };
-  private accessToken?: string;
-  private apiUrl?: string;
+  private host?: string;
   private basePath = '';
   private rootUri?: vscode.Uri;
   private allowedExts: Set<string> = new Set();
   private loaded = false;
   private output?: vscode.OutputChannel;
-
-  constructor(output?: vscode.OutputChannel) {
+  private connections: ConnectionsProvider;
+  constructor(connections: ConnectionsProvider, output?: vscode.OutputChannel) {
+    this.connections = connections;
     this.output = output;
   }
 
-  connect(accessToken: string, apiUrl: string, root: vscode.Uri): void {
-    this.accessToken = accessToken;
-    this.apiUrl = apiUrl.replace(/\/?$/, '');
+  private async _getConnection(): Promise<{ token: string; apiUrl: string } | undefined> {
+    if (!this.host) {
+      return undefined;
+    }
+    return this.connections.ensureConnection(this.host, this.output!);
+  }
+
+  connect(root: vscode.Uri): void {
+    this.host = root.authority;
     this.setBasePath(root);
     this.root.children.clear();
     this.loaded = false;
@@ -102,12 +110,14 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     if (!file.id) {
       return new Uint8Array();
     }
-    if (!this.accessToken || !this.apiUrl) {
+    const conn = await this._getConnection();
+    if (!conn) {
       throw vscode.FileSystemError.Unavailable('Not connected');
     }
+    const { token, apiUrl } = conn;
     this.output?.appendLine(`Fetching ${uri.path}`);
-    const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${file.id})?$select=content`;
-    const headers = { Authorization: `Bearer ${this.accessToken}` };
+    const url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset(${file.id})?$select=content`;
+    const headers = { Authorization: `Bearer ${token}` };
     this.output?.appendLine(`GET ${url}`);
     this.output?.appendLine(
       `Request Headers: ${JSON.stringify({ Authorization: 'Bearer ***' })}`,
@@ -129,13 +139,15 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean },
   ): Promise<void> {
-    if (!this.accessToken || !this.apiUrl) {
+    const conn = await this._getConnection();
+    if (!conn) {
       throw vscode.FileSystemError.Unavailable('Not connected');
     }
+    const { token, apiUrl } = conn;
     const existing = this._lookup(uri);
     const data = Buffer.from(content).toString('base64');
     const headers = {
-      Authorization: `Bearer ${this.accessToken}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     };
     if (existing && existing.type === vscode.FileType.File) {
@@ -143,7 +155,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         if (data.length === 0) {
           // skip updating empty content
         } else {
-          const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${existing.id})`;
+          const url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset(${existing.id})`;
           this.output?.appendLine(`PATCH ${url}`);
           const bodyData = { content: data };
           this.output?.appendLine(`Request Body: ${JSON.stringify(bodyData)}`);
@@ -162,7 +174,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       } else if (data.length > 0) {
         const name = uri.path.replace(/^\/+/, '');
         const type = this._getTypeFromExtension(name);
-        const url = `${this.apiUrl}/api/data/v9.2/webresourceset`;
+        const url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset`;
         this.output?.appendLine(`POST ${url}`);
         const bodyData = {
           name,
@@ -215,7 +227,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         this._addEntry(name);
       } else {
         const type = this._getTypeFromExtension(name);
-        const url = `${this.apiUrl}/api/data/v9.2/webresourceset`;
+        const url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset`;
         this.output?.appendLine(`POST ${url}`);
         const bodyData = {
           name,
@@ -290,15 +302,17 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
     if (entry.type === vscode.FileType.File) {
-      if (!this.accessToken || !this.apiUrl) {
+      const conn = await this._getConnection();
+      if (!conn) {
         throw vscode.FileSystemError.Unavailable('Not connected');
       }
+      const { token, apiUrl } = conn;
       if (entry.id) {
-        const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
+        const url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset(${entry.id})`;
         this.output?.appendLine(`DELETE ${url}`);
         const resp = await fetch(url, {
           method: 'DELETE',
-          headers: { Authorization: `Bearer ${this.accessToken}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         this.output?.appendLine(`Response: ${resp.status}`);
         if (!resp.ok) {
@@ -329,8 +343,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     }
     if (entry.type === vscode.FileType.File) {
       const name = newUri.path.replace(/^\/+/, '');
-      if (entry.id && this.accessToken && this.apiUrl) {
-        entry.id = await this._recreateWithNewName(entry, oldUri.path.replace(/^\/+/, ''), name);
+      if (entry.id) {
+        const conn = await this._getConnection();
+        if (conn) {
+          entry.id = await this._recreateWithNewName(entry, oldUri.path.replace(/^\/+/, ''), name);
+        }
       }
       const parentOld = this._lookupAsDirectory(vscode.Uri.joinPath(oldUri, '..'));
       parentOld.children.delete(oldUri.path.split('/').pop() || '');
@@ -362,19 +379,24 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   private async _fetchResources(): Promise<number> {
-    if (!this.accessToken || !this.apiUrl || !this.rootUri) {
+    if (!this.rootUri) {
       return 0;
     }
+    const conn = await this._getConnection();
+    if (!conn) {
+      return 0;
+    }
+    const { token, apiUrl } = conn;
     this.root.children.clear();
-    this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
+    this.output?.appendLine(`Loading web resources from ${apiUrl}`);
     this.output?.appendLine(`Root URI ${this.rootUri.toString()} basePath ${this.basePath}`);
 
     let count = 0;
     await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Loading web resources...' },
       async () => {
-        let url = `${this.apiUrl}/api/data/v9.2/webresourceset?$select=webresourceid,name`;
-        const headers = { Authorization: `Bearer ${this.accessToken}` };
+        let url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset?$select=webresourceid,name`;
+        const headers = { Authorization: `Bearer ${token}` };
         while (url) {
           this.output?.appendLine(`GET ${url}`);
           this.output?.appendLine(
@@ -414,9 +436,6 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   async reload(): Promise<number> {
-    if (!this.accessToken || !this.apiUrl) {
-      return 0;
-    }
     if (!this.rootUri) {
       return 0;
     }
@@ -540,13 +559,18 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   private async _recreateWithNewName(entry: FileEntry, oldName: string, newName: string): Promise<string | undefined> {
-    if (!entry.id || !this.accessToken || !this.apiUrl) {
+    if (!entry.id) {
       return entry.id;
     }
+    const conn = await this._getConnection();
+    if (!conn) {
+      return entry.id;
+    }
+    const { token, apiUrl } = conn;
 
-    const headers = { Authorization: `Bearer ${this.accessToken}` };
+    const headers = { Authorization: `Bearer ${token}` };
 
-    const getUrl = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})?$select=content,webresourcetype`;
+    const getUrl = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset(${entry.id})?$select=content,webresourcetype`;
     this.output?.appendLine(`GET ${getUrl}`);
     const getResp = await fetch(getUrl, { headers });
     this.output?.appendLine(`Response: ${getResp.status}`);
@@ -559,7 +583,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     const content = json.content as string;
     const type = json.webresourcetype as number ?? this._getTypeFromExtension(oldName);
 
-    const postUrl = `${this.apiUrl}/api/data/v9.2/webresourceset`;
+    const postUrl = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset`;
     this.output?.appendLine(`POST ${postUrl}`);
     const bodyData = { name: newName, displayname: newName, webresourcetype: type, content };
     this.output?.appendLine(`Request Body: ${JSON.stringify(bodyData)}`);
@@ -597,7 +621,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       }
     }
 
-    const delUrl = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
+    const delUrl = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset(${entry.id})`;
     this.output?.appendLine(`DELETE ${delUrl}`);
     const delResp = await fetch(delUrl, { method: 'DELETE', headers });
     this.output?.appendLine(`Response: ${delResp.status}`);
@@ -616,8 +640,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       const oldPath = `${oldPrefix}/${name}`;
       const newPath = `${newPrefix}/${name}`;
       if (child.type === vscode.FileType.File) {
-        if (child.id && this.accessToken && this.apiUrl) {
-          child.id = await this._recreateWithNewName(child, oldPath, newPath);
+        if (child.id) {
+          const conn = await this._getConnection();
+          if (conn) {
+            child.id = await this._recreateWithNewName(child, oldPath, newPath);
+          }
         }
       } else {
         await this._renameFolderEntries(child, oldPath, newPath);
@@ -626,13 +653,18 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   private async _publish(id?: string): Promise<void> {
-    if (!id || !this.accessToken || !this.apiUrl) {
+    if (!id) {
       return;
     }
+    const conn = await this._getConnection();
+    if (!conn) {
+      return;
+    }
+    const { token, apiUrl } = conn;
     const xml = `<importexportxml><webresources><webresource>${id}</webresource></webresources></importexportxml>`;
-    const url = `${this.apiUrl}/api/data/v9.2/PublishXml`;
+    const url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/PublishXml`;
     const headers = {
-      Authorization: `Bearer ${this.accessToken}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     };
     await fetch(url, {

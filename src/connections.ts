@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-import { DiscoveryInstance } from './extension';
+import {
+  DiscoveryInstance,
+  login,
+  acquireTokenForResource,
+  saveConnection,
+} from './auth';
 
 export class AccountItem extends vscode.TreeItem {
   constructor(public readonly account: string) {
@@ -74,5 +79,50 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     return [];
+  }
+
+  async ensureConnection(host: string, output: vscode.OutputChannel): Promise<{ token: string; apiUrl: string } | undefined> {
+    const saved = this.context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
+    const instance = saved[host];
+    if (!instance) {
+      output.appendLine(`No saved environment for ${host}`);
+      return undefined;
+    }
+
+    let token = await this.context.secrets.get(`token:${host}`);
+    let expiry = this.context.globalState.get<number>(`tokenExpires:${host}`) ?? 0;
+    if (!token || expiry <= Date.now()) {
+      output.appendLine(`Token for ${host} missing or expired. Reauthenticating...`);
+      const auth = await login(this.context, output);
+      if (!auth || !auth.result.account) {
+        vscode.window.showErrorMessage('Sign in required to open environment');
+        return undefined;
+      }
+      const envToken = await acquireTokenForResource(auth.pca, auth.result.account, instance.ApiUrl, output);
+      token = envToken.accessToken;
+      expiry = envToken.expiresOn?.getTime() ?? Date.now() + 3600 * 1000;
+      await saveConnection(
+        this.context,
+        instance,
+        token,
+        envToken.expiresOn ?? new Date(expiry),
+        auth.result.account.username,
+      );
+      this.refresh();
+    }
+    return { token, apiUrl: instance.ApiUrl };
+  }
+
+  async loadCurrentFolder(fsProvider: { connect(uri: vscode.Uri): void }, output: vscode.OutputChannel): Promise<void> {
+    const folder = vscode.workspace.workspaceFolders?.find((f) => f.uri.scheme === 'd365-nwrm');
+    if (!folder) {
+      return;
+    }
+    const host = folder.uri.authority;
+    if (!host) {
+      return;
+    }
+    await this.ensureConnection(host, output);
+    fsProvider.connect(folder.uri);
   }
 }

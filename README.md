@@ -90,6 +90,16 @@ The extension authenticates using the device code flow and does not require a cl
 - `npm test` – Currently runs the build as a sanity check.
 - `npm run watch` – Rebuild on file changes.
 
+## Installing from Releases
+
+Download the `.vsix` file attached to the latest release on GitHub. In VS Code open the Command Palette with `Ctrl+Shift+P`, select **Extensions: Install from VSIX...**, and choose the downloaded file.
+
+Alternatively install from the command line:
+
+```bash
+code --install-extension path/to/dynamics-crm-webresources.vsix
+```
+
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

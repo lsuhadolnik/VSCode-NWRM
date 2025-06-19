@@ -25,11 +25,17 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   private accessToken?: string;
   private apiUrl?: string;
   private basePath = '';
+  private rootUri?: vscode.Uri;
   private allowedExts: Set<string> = new Set();
   private output?: vscode.OutputChannel;
 
   constructor(output?: vscode.OutputChannel) {
     this.output = output;
+  }
+
+  setBasePath(uri: vscode.Uri): void {
+    this.rootUri = uri;
+    this.basePath = uri.path;
   }
 
   private _normalizePath(uri: vscode.Uri): string {
@@ -335,10 +341,10 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, oldUri, newUri } as any]);
   }
 
-  async load(accessToken: string, apiUrl: string, basePath = ''): Promise<number> {
+  async load(accessToken: string, apiUrl: string, root: vscode.Uri): Promise<number> {
     this.accessToken = accessToken;
     this.apiUrl = apiUrl.replace(/\/?$/, '');
-    this.basePath = basePath;
+    this.setBasePath(root);
     this.root.children.clear();
     this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
 
@@ -375,12 +381,14 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
 
     this.output?.appendLine(`Loaded ${count} web resources.`);
     await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
-    this._onDidChangeFile.fire([
-      {
-        type: vscode.FileChangeType.Changed,
-        uri: vscode.Uri.parse(`d365-nwrm:${this.basePath}`),
-      },
-    ]);
+    if (this.rootUri) {
+      this._onDidChangeFile.fire([
+        {
+          type: vscode.FileChangeType.Changed,
+          uri: this.rootUri,
+        },
+      ]);
+    }
     return count;
   }
 
@@ -388,7 +396,10 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     if (!this.accessToken || !this.apiUrl) {
       return 0;
     }
-    return this.load(this.accessToken, this.apiUrl, this.basePath);
+    if (!this.rootUri) {
+      return 0;
+    }
+    return this.load(this.accessToken, this.apiUrl, this.rootUri);
   }
 
   private _isExcluded(name: string): boolean {

@@ -34,7 +34,8 @@ async function tryLoadFolder(
     context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
   const instance = saved[env];
   if (token && expiry > Date.now() && instance) {
-    await fsProvider.load(token, instance.ApiUrl, `/${env}`);
+    fsProvider.setBasePath(folder.uri);
+    await fsProvider.load(token, instance.ApiUrl, folder.uri);
     connectionsProvider.refresh();
   }
 }
@@ -46,6 +47,13 @@ export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('Dynamics CRM');
   const fsProvider = new CrmFileSystemProvider(output);
   const connectionsProvider = new ConnectionsProvider(context);
+
+  const current = vscode.workspace.workspaceFolders?.find(
+    (f) => f.uri.scheme === 'd365-nwrm',
+  );
+  if (current) {
+    fsProvider.setBasePath(current.uri);
+  }
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider('d365-nwrm', fsProvider, {
       isReadonly: false,
@@ -73,6 +81,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
         await saveConnection(context, instance, token, tokenExpires, result.account.username);
         const root = vscode.Uri.parse(`d365-nwrm://${new URL(instance.ApiUrl).host}/${instance.UrlName}`);
+        output.appendLine(`Opening folder ${root.toString()}`);
         await vscode.commands.executeCommand('vscode.openFolder', root, false);
       }
     }
@@ -103,6 +112,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     await saveConnection(context, item.instance, item.token, item.expiresOn, item.account);
     const uri = vscode.Uri.parse(`d365-nwrm://${new URL(item.instance.ApiUrl).host}/${item.instance.UrlName}`);
+    output.appendLine(`Opening folder ${uri.toString()}`);
     await vscode.commands.executeCommand('vscode.openFolder', uri, false);
   });
 

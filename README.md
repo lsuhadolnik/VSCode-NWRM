@@ -11,11 +11,11 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Create, move, and rename** – Add new files and folders, move resources between folders, and rename them directly from VS Code. Renaming or moving automatically publishes the resource.
 - **Folder rename** – Renaming a folder updates all contained Web Resources after confirmation.
 - **Additional file types** – Supports images, XML, icons, and more alongside HTML, CSS, and JavaScript.
-- **Connections sidebar** – Manage saved environments from the activity bar.
+- **Explorer panel** – Manage saved accounts and environments from the new *Dynamics WebResource Manager* view under the File Explorer.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
-- **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.
-- **Add connection button** – Use the **+ Add Connection** action in the sidebar to sign in to another environment.
-- **Workspace per environment** – Connections create a `.code-workspace` file under `~/D365-NWRM` and open it in the current window. The workspace starts empty and the CRM folder is added once the extension loads.
+- **Add connection button** – Use the **+ Add Connection** action in the panel to sign in to another environment.
+- **Reload command** – Refresh the list of web resources on demand.
+- **Type filter** – Limit loaded web resources by extension (JS, HTML, CSS, ...).
 
 ## Getting Started
 
@@ -54,10 +54,10 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   **Dynamics CRM** from the channel dropdown to see detailed logs, including web
   resource load errors. Each HTTP request is logged with headers to make
   troubleshooting authentication problems easier.
-  Saved connections with valid tokens appear in the **Web Resource Manager** sidebar so you can quickly reconnect or remove them.
+  Saved connections with valid tokens appear in the **Dynamics WebResource Manager** panel so you can quickly reconnect or remove them.
   After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
-  When you select an environment, a workspace file is created under `~/D365-NWRM` and opened in the current VS Code window. Web Resources appear in the File Explorer once loading completes.
-  If prompted to trust the workspace, choose **Yes** and the resources will load automatically.
+  Selecting an environment opens a virtual folder using the `d365-nwrm:` scheme where the Web Resources are shown.
+  If prompted to trust the folder, choose **Yes** and the resources will load automatically.
 
 ### Environment Discovery
 

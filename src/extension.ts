@@ -2,56 +2,39 @@ import * as vscode from 'vscode';
 import { PublicClientApplication, DeviceCodeRequest, AuthenticationResult, AccountInfo } from '@azure/msal-node';
 import fetch from 'node-fetch';
 import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs/promises';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
-import { ConnectionsProvider, ConnectionItem } from './connections';
+import { ConnectionsProvider, EnvironmentItem } from './connections';
 
 interface AuthResult {
   pca: PublicClientApplication;
   result: AuthenticationResult;
 }
 
-async function createWorkspaceFile(instance: DiscoveryInstance): Promise<string> {
-  const dir = path.join(os.homedir(), 'D365-NWRM');
-  await fs.mkdir(dir, { recursive: true });
-  const file = path.join(dir, `${instance.UrlName}.code-workspace`);
-  const content = JSON.stringify({ folders: [] }, null, 2);
-  await fs.writeFile(file, content);
-  return file;
-}
-
-async function tryLoadWorkspace(
+async function tryLoadFolder(
   context: vscode.ExtensionContext,
   fsProvider: CrmFileSystemProvider,
   connectionsProvider: ConnectionsProvider,
   output: vscode.OutputChannel,
 ) {
-  const ws = vscode.workspace.workspaceFile;
-  if (!ws) {
+  const folder = vscode.workspace.workspaceFolders?.find(
+    (f) => f.uri.scheme === 'd365-nwrm',
+  );
+  if (!folder) {
     return;
   }
-  const name = path.basename(ws.fsPath, '.code-workspace');
-  const token = await context.secrets.get(`token:${name}`);
-  const expiry = context.globalState.get<number>(`tokenExpires:${name}`) ?? 0;
+  const parts = folder.uri.path.split('/').filter(Boolean);
+  const env = parts[0];
+  if (!env) {
+    return;
+  }
+  const token = await context.secrets.get(`token:${env}`);
+  const expiry = context.globalState.get<number>(`tokenExpires:${env}`) ?? 0;
   const saved =
-    context.globalState.get<Record<string, DiscoveryInstance>>("savedEnvironments") ?? {};
-  const instance = saved[name];
+    context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
+  const instance = saved[env];
   if (token && expiry > Date.now() && instance) {
-    const label = `${instance.FriendlyName ?? instance.UniqueName} (${new URL(
-      instance.ApiUrl
-    ).host})`;
-    if (
-      !vscode.workspace.workspaceFolders ||
-      !vscode.workspace.workspaceFolders.find((f) => f.uri.scheme === 'crm')
-    ) {
-      vscode.workspace.updateWorkspaceFolders(0, 0, {
-        uri: vscode.Uri.parse('crm:/'),
-        name: label,
-      });
-    }
-    await fsProvider.load(token, instance.ApiUrl);
+    await fsProvider.load(token, instance.ApiUrl, `/${env}`);
     connectionsProvider.refresh();
   }
 }
@@ -64,7 +47,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const fsProvider = new CrmFileSystemProvider(output);
   const connectionsProvider = new ConnectionsProvider(context);
   context.subscriptions.push(
-    vscode.workspace.registerFileSystemProvider('crm', fsProvider, {
+    vscode.workspace.registerFileSystemProvider('d365-nwrm', fsProvider, {
       isReadonly: false,
     })
   );
@@ -88,34 +71,15 @@ export async function activate(context: vscode.ExtensionContext) {
         );
         const token = envTokenResult.accessToken;
         const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
-        await saveConnection(context, instance, token, tokenExpires);
-        const workspaceFile = await createWorkspaceFile(instance);
-        await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspaceFile), false);
+        await saveConnection(context, instance, token, tokenExpires, result.account.username);
+        const root = vscode.Uri.parse(`d365-nwrm://${new URL(instance.ApiUrl).host}/${instance.UrlName}`);
+        await vscode.commands.executeCommand('vscode.openFolder', root, false);
       }
     }
   });
 
-  const connectSavedCmd = vscode.commands.registerCommand(
-    'dynamicsCrm.connectSaved',
-    async (item: ConnectionItem) => {
-      const token = await context.secrets.get(`token:${item.instance.UrlName}`);
-      const expiry =
-        context.globalState.get<number>(`tokenExpires:${item.instance.UrlName}`) ?? 0;
-      if (!token || expiry <= Date.now()) {
-        vscode.window.showErrorMessage('Saved token has expired.');
-        return;
-      }
-      await saveConnection(context, item.instance, token, new Date(expiry));
-      const workspaceFile = await createWorkspaceFile(item.instance);
-      await vscode.commands.executeCommand(
-        'vscode.openFolder',
-        vscode.Uri.file(workspaceFile),
-        false
-      );
-    }
-  );
 
-  const deleteTokenCmd = vscode.commands.registerCommand('dynamicsCrm.deleteToken', async (item: ConnectionItem) => {
+  const deleteTokenCmd = vscode.commands.registerCommand('dynamicsCrm.deleteToken', async (item: EnvironmentItem) => {
     await context.secrets.delete(`token:${item.instance.UrlName}`);
     await context.globalState.update(`tokenExpires:${item.instance.UrlName}`, undefined);
     const saved = context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
@@ -128,6 +92,20 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand('dynamicsCrm.connect');
   });
 
+  const openEnvCmd = vscode.commands.registerCommand('dynamicsCrm.openEnvironment', async (item: EnvironmentItem) => {
+    const pick = await vscode.window.showInformationMessage(
+      `Open environment ${item.description}?`,
+      { modal: true },
+      'Open'
+    );
+    if (pick !== 'Open') {
+      return;
+    }
+    await saveConnection(context, item.instance, item.token, item.expiresOn, item.account);
+    const uri = vscode.Uri.parse(`d365-nwrm://${new URL(item.instance.ApiUrl).host}/${item.instance.UrlName}`);
+    await vscode.commands.executeCommand('vscode.openFolder', uri, false);
+  });
+
   const publishCmd = vscode.commands.registerCommand(
     'dynamicsCrm.publishWebResource',
     async (resource?: vscode.Uri) => {
@@ -137,7 +115,7 @@ export async function activate(context: vscode.ExtensionContext) {
       } else if (vscode.window.activeTextEditor) {
         uri = vscode.window.activeTextEditor.document.uri;
       }
-      if (!uri || uri.scheme !== 'crm') {
+      if (!uri || uri.scheme !== 'd365-nwrm') {
         vscode.window.showErrorMessage('No web resource selected');
         return;
       }
@@ -150,8 +128,27 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const reloadCmd = vscode.commands.registerCommand('dynamicsCrm.reloadWebResources', async () => {
+    const count = await fsProvider.reload();
+    vscode.window.showInformationMessage(`Reloaded ${count} web resources`);
+  });
+
+  const filterCmd = vscode.commands.registerCommand('dynamicsCrm.filterTypes', async () => {
+    const options = [
+      { label: 'JavaScript', ext: '.js', picked: true },
+      { label: 'HTML', ext: '.html', picked: true },
+      { label: 'CSS', ext: '.css', picked: true },
+    ];
+    const picks = await vscode.window.showQuickPick(options, { canPickMany: true });
+    if (!picks) {
+      return;
+    }
+    fsProvider.setFilter(picks.map((p) => (p as any).ext));
+    await fsProvider.reload();
+  });
+
   const saveListener = vscode.workspace.onDidSaveTextDocument(async (doc) => {
-    if (doc.uri.scheme === 'crm') {
+    if (doc.uri.scheme === 'd365-nwrm') {
       try {
         await fsProvider.publish(doc.uri);
         output.appendLine(`Auto-published ${doc.uri.path}`);
@@ -163,15 +160,17 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     disposable,
-    connectSavedCmd,
     deleteTokenCmd,
     addConnectionCmd,
+    openEnvCmd,
+    reloadCmd,
+    filterCmd,
     publishCmd,
     saveListener,
     output,
   );
 
-  await tryLoadWorkspace(context, fsProvider, connectionsProvider, output);
+  await tryLoadFolder(context, fsProvider, connectionsProvider, output);
 }
 
 
@@ -330,13 +329,15 @@ async function saveConnection(
   context: vscode.ExtensionContext,
   instance: DiscoveryInstance,
   token: string,
-  expires: Date
+  expires: Date,
+  account: string
 ): Promise<void> {
   await context.secrets.store(`token:${instance.UrlName}`, token);
   await context.globalState.update(`tokenExpires:${instance.UrlName}`, expires.getTime());
   const saved = context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
   saved[instance.UrlName] = instance;
   await context.globalState.update('savedEnvironments', saved);
+  await context.globalState.update(`savedAccount:${instance.UrlName}`, account);
 }
 
 export function deactivate() {}

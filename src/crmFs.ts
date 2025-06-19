@@ -24,10 +24,27 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   private root: DirEntry = { type: vscode.FileType.Directory, children: new Map() };
   private accessToken?: string;
   private apiUrl?: string;
+  private basePath = '';
+  private allowedExts: Set<string> = new Set();
   private output?: vscode.OutputChannel;
 
   constructor(output?: vscode.OutputChannel) {
     this.output = output;
+  }
+
+  private _normalizePath(uri: vscode.Uri): string {
+    let p = uri.path;
+    if (this.basePath && p.startsWith(this.basePath)) {
+      p = p.slice(this.basePath.length);
+    }
+    if (!p.startsWith('/')) {
+      p = '/' + p;
+    }
+    return p;
+  }
+
+  setFilter(exts: string[]): void {
+    this.allowedExts = new Set(exts.map((e) => e.toLowerCase()));
   }
 
   watch(): vscode.Disposable {
@@ -318,9 +335,10 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, oldUri, newUri } as any]);
   }
 
-  async load(accessToken: string, apiUrl: string): Promise<number> {
+  async load(accessToken: string, apiUrl: string, basePath = ''): Promise<number> {
     this.accessToken = accessToken;
     this.apiUrl = apiUrl.replace(/\/?$/, '');
+    this.basePath = basePath;
     this.root.children.clear();
     this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
 
@@ -344,7 +362,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
           }
           const json = await resp.json();
           for (const item of json.value as { webresourceid: string; name: string }[]) {
-            if (this._isExcluded(item.name)) {
+            if (this._isExcluded(item.name) || !this._isAllowed(item.name)) {
               continue;
             }
             this._addEntry(item.name, item.webresourceid);
@@ -357,12 +375,32 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
 
     this.output?.appendLine(`Loaded ${count} web resources.`);
     await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
-    this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri: vscode.Uri.parse('crm:/') }]);
+    this._onDidChangeFile.fire([
+      {
+        type: vscode.FileChangeType.Changed,
+        uri: vscode.Uri.parse(`d365-nwrm:${this.basePath}`),
+      },
+    ]);
     return count;
+  }
+
+  async reload(): Promise<number> {
+    if (!this.accessToken || !this.apiUrl) {
+      return 0;
+    }
+    return this.load(this.accessToken, this.apiUrl, this.basePath);
   }
 
   private _isExcluded(name: string): boolean {
     return /^(msdyn_|mscrm_|adx_|microsoft)/i.test(name);
+  }
+
+  private _isAllowed(name: string): boolean {
+    if (this.allowedExts.size === 0) {
+      return true;
+    }
+    const ext = path.extname(name).toLowerCase();
+    return this.allowedExts.has(ext);
   }
 
   private _addEntry(resourceName: string, id?: string): void {
@@ -384,10 +422,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   private _lookup(uri: vscode.Uri): Entry | undefined {
-    if (uri.path === '/') {
+    const norm = this._normalizePath(uri);
+    if (norm === '/' || norm === '') {
       return this.root;
     }
-    const parts = uri.path.split('/').slice(1); // remove leading empty
+    const parts = norm.split('/').slice(1);
     let entry: Entry = this.root;
     for (const part of parts) {
       if (entry.type !== vscode.FileType.Directory) {

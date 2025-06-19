@@ -36,6 +36,18 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this.output = output;
   }
 
+  private _ensureConnected(uri: vscode.Uri): void {
+    if (!this.rootUri) {
+      const root = vscode.Uri.from({
+        scheme: uri.scheme,
+        authority: uri.authority,
+        path: '/',
+      });
+      this.output?.appendLine(`Connecting to ${root.toString()}`);
+      this.connect(root);
+    }
+  }
+
   private async _getConnection(): Promise<{ token: string; apiUrl: string } | undefined> {
     if (!this.host) {
       return undefined;
@@ -96,6 +108,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
+    this._ensureConnected(uri);
     this.output?.appendLine(
       `readDirectory ${uri.toString()} -> ${this._normalizePath(uri)}`,
     );
@@ -139,6 +152,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean },
   ): Promise<void> {
+    this._ensureConnected(uri);
     const conn = await this._getConnection();
     if (!conn) {
       throw vscode.FileSystemError.Unavailable('Not connected');
@@ -281,6 +295,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   createDirectory(uri: vscode.Uri): void {
+    this._ensureConnected(uri);
     const parts = uri.path.split('/').slice(1);
     let dir = this.root;
     for (const part of parts) {
@@ -297,6 +312,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   async delete(uri: vscode.Uri): Promise<void> {
+    this._ensureConnected(uri);
     const entry = this._lookup(uri);
     if (!entry) {
       throw vscode.FileSystemError.FileNotFound(uri);
@@ -334,6 +350,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     newUri: vscode.Uri,
     options: { overwrite: boolean },
   ): Promise<void> {
+    this._ensureConnected(oldUri);
     const entry = this._lookup(oldUri);
     if (!entry) {
       throw vscode.FileSystemError.FileNotFound(oldUri);
@@ -437,6 +454,14 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
 
   async reload(): Promise<number> {
     if (!this.rootUri) {
+      const folder = vscode.workspace.workspaceFolders?.find(
+        (f) => f.uri.scheme === 'd365-nwrm',
+      );
+      if (folder) {
+        this._ensureConnected(folder.uri);
+      }
+    }
+    if (!this.rootUri) {
       return 0;
     }
     const count = await this._fetchResources();
@@ -475,6 +500,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   private _lookup(uri: vscode.Uri): Entry | undefined {
+    this._ensureConnected(uri);
     const norm = this._normalizePath(uri);
     if (norm === '/' || norm === '') {
       return this.root;

@@ -113,16 +113,4 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<vscode.TreeI
     return { token, apiUrl: instance.ApiUrl };
   }
 
-  async loadCurrentFolder(fsProvider: { connect(uri: vscode.Uri): void }, output: vscode.OutputChannel): Promise<void> {
-    const folder = vscode.workspace.workspaceFolders?.find((f) => f.uri.scheme === 'd365-nwrm');
-    if (!folder) {
-      return;
-    }
-    const host = folder.uri.authority;
-    if (!host) {
-      return;
-    }
-    await this.ensureConnection(host, output);
-    fsProvider.connect(folder.uri);
-  }
 }

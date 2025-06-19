@@ -151,8 +151,6 @@ export async function activate(context: vscode.ExtensionContext) {
     saveListener,
     output,
   );
-
-  await connectionsProvider.loadCurrentFolder(fsProvider, output);
 }
 
 

@@ -1,18 +1,21 @@
 # Dynamics CRM Web Resources Manager VSCode Extension
 
-This extension provides an integrated experience for managing Dynamics 365 (CRM) Web Resources directly from Visual Studio Code. It connects to your CRM instance, discovers all available environments and exposes Web Resources as virtual files in a read-only filesystem. You can open, edit, and save changes back to Dynamics without leaving VS Code.
+This extension provides an integrated experience for managing Dynamics 365 (CRM) Web Resources directly from Visual Studio Code. It connects to your CRM instance, discovers all available environments and exposes Web Resources as virtual files in a writable virtual filesystem. You can open, edit, and save changes back to Dynamics without leaving VS Code.
 
 ## Features
 
 - **Interactive authentication** – Sign in to your Dynamics CRM tenant and automatically discover all environments using the Discovery Service. After signing in, you're prompted to choose the environment to connect to. A prompt copies the device code to your clipboard and opens the login page for you.
-- **Virtual file system** – Browse and edit Web Resources as regular files in a custom tree view.
-- **Publish on save** – Press `Ctrl+S` to publish updates back to Dynamics CRM.
-- **Sidebar integration** – A dedicated view allows you to connect to an environment and manage Web Resources.
+- **Virtual file system** – Browse and edit Web Resources using the built-in File Explorer.
+- **Auto-publish on save** – Press `Ctrl+S` to upload and publish changes back to Dynamics CRM.
+- **Publish command** – Publish individual Web Resources from the context menu or Command Palette.
+- **Create, move, and rename** – Add new files and folders, move resources between folders, and rename them directly from VS Code. Renaming or moving automatically publishes the resource.
+- **Folder rename** – Renaming a folder updates all contained Web Resources after confirmation.
+- **Additional file types** – Supports images, XML, icons, and more alongside HTML, CSS, and JavaScript.
+- **Connections sidebar** – Manage saved environments from the activity bar.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
 - **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.
 - **Add connection button** – Use the **+ Add Connection** action in the sidebar to sign in to another environment.
-- **Workspace per environment** – Connections create a `.code-workspace` file under `~/D365-NWRM` and open it in the current window.
-- **Load notification** – When Web Resources finish loading, a notification offers to open the Web Resources view.
+- **Workspace per environment** – Connections create a `.code-workspace` file under `~/D365-NWRM` and open it in the current window. The workspace starts empty and the CRM folder is added once the extension loads.
 
 ## Getting Started
 
@@ -53,7 +56,7 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   troubleshooting authentication problems easier.
   Saved connections with valid tokens appear in the **Web Resource Manager** sidebar so you can quickly reconnect or remove them.
   After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
-  When you select an environment, a workspace file is created under `~/D365-NWRM` and opened in the current VS Code window. Web Resources appear in the **Web Resources** tree once loading completes.
+  When you select an environment, a workspace file is created under `~/D365-NWRM` and opened in the current VS Code window. Web Resources appear in the File Explorer once loading completes.
   If prompted to trust the workspace, choose **Yes** and the resources will load automatically.
 
 ### Environment Discovery
@@ -84,10 +87,6 @@ The extension authenticates using the device code flow and does not require a cl
 - `npm run build` – Compile the extension using TypeScript.
 - `npm test` – Currently runs the build as a sanity check.
 - `npm run watch` – Rebuild on file changes.
-
-## Roadmap
-
-This project currently contains only the initial scaffolding. Future work includes implementing the virtual file system provider, connecting to the Dynamics Discovery Service, listing environments, and publishing edited Web Resources.
 
 ## License
 

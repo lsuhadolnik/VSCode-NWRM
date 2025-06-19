@@ -12,12 +12,11 @@
   "activationEvents": [
     "onCommand:dynamicsCrm.connect",
     "onView:connections",
-    "onView:webResources",
     "onCommand:dynamicsCrm.connectSaved",
     "onCommand:dynamicsCrm.deleteToken",
     "onCommand:dynamicsCrm.addConnection",
     "onFileSystem:crm",
-    "onStartupFinished"
+    "*"
   ],
   "main": "./out/extension.js",
   "icon": "images/webresource.svg",
@@ -39,6 +38,10 @@
         "command": "dynamicsCrm.addConnection",
         "title": "Dynamics CRM: Add Connection",
         "icon": "$(add)"
+      },
+      {
+        "command": "dynamicsCrm.publishWebResource",
+        "title": "Dynamics CRM: Publish Web Resource"
       }
     ],
     "configuration": {
@@ -65,10 +68,6 @@
         {
           "id": "connections",
           "name": "Connections"
-        },
-        {
-          "id": "webResources",
-          "name": "Web Resources"
         }
       ]
     },

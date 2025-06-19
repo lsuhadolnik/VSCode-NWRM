@@ -440,15 +440,6 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     );
 
     this.output?.appendLine(`Loaded ${count} web resources.`);
-    await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
-    if (this.rootUri) {
-      this._onDidChangeFile.fire([
-        {
-          type: vscode.FileChangeType.Changed,
-          uri: this.rootUri,
-        },
-      ]);
-    }
     return count;
   }
 

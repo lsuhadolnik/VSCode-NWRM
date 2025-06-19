@@ -154,6 +154,16 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
             // ignore parse errors
           }
         }
+        if (!id) {
+          const entityId =
+            resp.headers.get('OData-EntityId') ||
+            resp.headers.get('odata-entityid') ||
+            resp.headers.get('Location');
+          const match = entityId ? /\(([^)]+)\)/.exec(entityId) : null;
+          if (match) {
+            id = match[1];
+          }
+        }
         existing.id = id;
       }
     } else if (!existing && options.create) {
@@ -177,7 +187,13 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
           body: JSON.stringify(bodyData),
         });
         this.output?.appendLine(`Response: ${resp.status}`);
+        const rawHeaders: Record<string, string> = {};
+        resp.headers.forEach((v, k) => {
+          rawHeaders[k] = v;
+        });
         const text = await resp.text();
+        this.output?.appendLine(`Response Headers: ${JSON.stringify(rawHeaders)}`);
+        this.output?.appendLine(`Response Body: ${text}`);
         if (!resp.ok) {
           this.output?.appendLine(`Failed to create ${uri.path}: ${resp.status} ${text}`);
           throw vscode.FileSystemError.Unavailable(`Failed to create ${uri.path}`);
@@ -189,6 +205,16 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
             id = json.webresourceid as string;
           } catch {
             // ignore parse errors
+          }
+        }
+        if (!id) {
+          const entityId =
+            resp.headers.get('OData-EntityId') ||
+            resp.headers.get('odata-entityid') ||
+            resp.headers.get('Location');
+          const match = entityId ? /\(([^)]+)\)/.exec(entityId) : null;
+          if (match) {
+            id = match[1];
           }
         }
         this._addEntry(name, id);

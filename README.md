@@ -8,7 +8,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Virtual file system** – Browse and edit Web Resources using the built-in File Explorer.
 - **Auto-publish on save** – Press `Ctrl+S` to upload and publish changes back to Dynamics CRM.
 - **Publish command** – Publish individual Web Resources from the context menu or Command Palette.
-- **Create and rename** – Add new files and folders and rename existing Web Resources directly from VS Code.
+- **Create, move, and rename** – Add new files and folders, move resources between folders, and rename them directly from VS Code. Renaming or moving automatically publishes the resource.
 - **Folder rename** – Renaming a folder updates all contained Web Resources after confirmation.
 - **Additional file types** – Supports images, XML, icons, and more alongside HTML, CSS, and JavaScript.
 - **Connections sidebar** – Manage saved environments from the activity bar.

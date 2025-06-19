@@ -16,7 +16,7 @@
     "onCommand:dynamicsCrm.deleteToken",
     "onCommand:dynamicsCrm.addConnection",
     "onFileSystem:crm",
-    "onStartupFinished"
+    "*"
   ],
   "main": "./out/extension.js",
   "icon": "images/webresource.svg",

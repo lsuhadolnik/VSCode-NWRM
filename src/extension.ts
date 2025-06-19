@@ -17,7 +17,7 @@ async function createWorkspaceFile(instance: DiscoveryInstance): Promise<string>
   const dir = path.join(os.homedir(), 'D365-NWRM');
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, `${instance.UrlName}.code-workspace`);
-  const content = JSON.stringify({ folders: [{ uri: 'crm:/' }] }, null, 2);
+  const content = JSON.stringify({ folders: [] }, null, 2);
   await fs.writeFile(file, content);
   return file;
 }

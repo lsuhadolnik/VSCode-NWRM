@@ -13,7 +13,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
 - **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.
 - **Add connection button** – Use the **+ Add Connection** action in the sidebar to sign in to another environment.
-- **Workspace per environment** – Connections create a `.code-workspace` file under `~/D365-NWRM` and open it in the current window.
+- **Workspace per environment** – Connections create a `.code-workspace` file under `~/D365-NWRM` and open it in the current window. The workspace starts empty and the CRM folder is added once the extension loads.
 
 ## Getting Started
 

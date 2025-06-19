@@ -7,7 +7,6 @@ import * as fs from 'fs/promises';
 import * as dotenv from 'dotenv';
 import { CrmFileSystemProvider } from './crmFs';
 import { ConnectionsProvider, ConnectionItem } from './connections';
-import { WebResourcesProvider } from './webResources';
 
 interface AuthResult {
   pca: PublicClientApplication;
@@ -18,7 +17,7 @@ async function createWorkspaceFile(instance: DiscoveryInstance): Promise<string>
   const dir = path.join(os.homedir(), 'D365-NWRM');
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, `${instance.UrlName}.code-workspace`);
-  const content = JSON.stringify({ folders: [{ uri: 'crm:/' }] }, null, 2);
+  const content = JSON.stringify({ folders: [] }, null, 2);
   await fs.writeFile(file, content);
   return file;
 }
@@ -26,9 +25,8 @@ async function createWorkspaceFile(instance: DiscoveryInstance): Promise<string>
 async function tryLoadWorkspace(
   context: vscode.ExtensionContext,
   fsProvider: CrmFileSystemProvider,
-  webResourcesProvider: WebResourcesProvider,
   connectionsProvider: ConnectionsProvider,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
 ) {
   const ws = vscode.workspace.workspaceFile;
   if (!ws) {
@@ -54,7 +52,6 @@ async function tryLoadWorkspace(
       });
     }
     await fsProvider.load(token, instance.ApiUrl);
-    webResourcesProvider.refresh();
     connectionsProvider.refresh();
   }
 }
@@ -66,13 +63,13 @@ export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('Dynamics CRM');
   const fsProvider = new CrmFileSystemProvider(output);
   const connectionsProvider = new ConnectionsProvider(context);
-  const webResourcesProvider = new WebResourcesProvider(fsProvider);
   context.subscriptions.push(
-    vscode.workspace.registerFileSystemProvider('crm', fsProvider, { isReadonly: true })
+    vscode.workspace.registerFileSystemProvider('crm', fsProvider, {
+      isReadonly: false,
+    })
   );
 
   vscode.window.registerTreeDataProvider('connections', connectionsProvider);
-  vscode.window.registerTreeDataProvider('webResources', webResourcesProvider);
 
 
   const disposable = vscode.commands.registerCommand('dynamicsCrm.connect', async () => {
@@ -131,9 +128,50 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand('dynamicsCrm.connect');
   });
 
-  context.subscriptions.push(disposable, connectSavedCmd, deleteTokenCmd, addConnectionCmd, output);
+  const publishCmd = vscode.commands.registerCommand(
+    'dynamicsCrm.publishWebResource',
+    async (resource?: vscode.Uri) => {
+      let uri: vscode.Uri | undefined;
+      if (resource instanceof vscode.Uri) {
+        uri = resource;
+      } else if (vscode.window.activeTextEditor) {
+        uri = vscode.window.activeTextEditor.document.uri;
+      }
+      if (!uri || uri.scheme !== 'crm') {
+        vscode.window.showErrorMessage('No web resource selected');
+        return;
+      }
+      try {
+        await fsProvider.publish(uri);
+        vscode.window.showInformationMessage(`Published ${uri.path}`);
+      } catch (err: any) {
+        vscode.window.showErrorMessage(`Failed to publish ${uri.path}: ${err}`);
+      }
+    },
+  );
 
-  await tryLoadWorkspace(context, fsProvider, webResourcesProvider, connectionsProvider, output);
+  const saveListener = vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    if (doc.uri.scheme === 'crm') {
+      try {
+        await fsProvider.publish(doc.uri);
+        output.appendLine(`Auto-published ${doc.uri.path}`);
+      } catch (err: any) {
+        output.appendLine(`Auto-publish failed for ${doc.uri.path}: ${err}`);
+      }
+    }
+  });
+
+  context.subscriptions.push(
+    disposable,
+    connectSavedCmd,
+    deleteTokenCmd,
+    addConnectionCmd,
+    publishCmd,
+    saveListener,
+    output,
+  );
+
+  await tryLoadWorkspace(context, fsProvider, connectionsProvider, output);
 }
 
 

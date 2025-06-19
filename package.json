@@ -10,13 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:dynamicsCrm.connect",
-    "onView:connections",
-    "onCommand:dynamicsCrm.connectSaved",
-    "onCommand:dynamicsCrm.deleteToken",
-    "onCommand:dynamicsCrm.addConnection",
-    "onFileSystem:crm",
-    "*"
+    "onFileSystem:d365-nwrm"
   ],
   "main": "./out/extension.js",
   "icon": "images/webresource.svg",
@@ -25,10 +19,6 @@
       {
         "command": "dynamicsCrm.connect",
         "title": "Dynamics CRM: Connect"
-      },
-      {
-        "command": "dynamicsCrm.connectSaved",
-        "title": "Dynamics CRM: Connect Saved"
       },
       {
         "command": "dynamicsCrm.deleteToken",
@@ -42,6 +32,18 @@
       {
         "command": "dynamicsCrm.publishWebResource",
         "title": "Dynamics CRM: Publish Web Resource"
+      },
+      {
+        "command": "dynamicsCrm.openEnvironment",
+        "title": "Dynamics CRM: Open Environment"
+      },
+      {
+        "command": "dynamicsCrm.reloadWebResources",
+        "title": "Dynamics CRM: Reload Web Resources"
+      },
+      {
+        "command": "dynamicsCrm.filterTypes",
+        "title": "Dynamics CRM: Filter Types"
       }
     ],
     "configuration": {
@@ -54,20 +56,11 @@
         }
       }
     },
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "webResourceManager",
-          "title": "Web Resource Manager",
-          "icon": "images/webresource.svg"
-        }
-      ]
-    },
     "views": {
-      "webResourceManager": [
+      "explorer": [
         {
           "id": "connections",
-          "name": "Connections"
+          "name": "Dynamics WebResource Manager"
         }
       ]
     },
@@ -75,15 +68,8 @@
       "view/item/context": [
         {
           "command": "dynamicsCrm.deleteToken",
-          "when": "view == connections && viewItem == connection",
+          "when": "view == connections && viewItem == environment",
           "group": "inline"
-        }
-      ],
-      "view/title": [
-        {
-          "command": "dynamicsCrm.addConnection",
-          "when": "view == connections",
-          "group": "navigation"
         }
       ]
     }

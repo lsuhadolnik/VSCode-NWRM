@@ -23,19 +23,46 @@ async function tryLoadFolder(
   if (!folder) {
     return;
   }
-  const env = folder.uri.authority;
-  if (!env) {
+  const host = folder.uri.authority;
+  if (!host) {
     return;
   }
-  const token = await context.secrets.get(`token:${env}`);
-  const expiry = context.globalState.get<number>(`tokenExpires:${env}`) ?? 0;
   const saved =
     context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
-  const instance = saved[env];
-  if (token && expiry > Date.now() && instance) {
-    fsProvider.connect(token, instance.ApiUrl, folder.uri);
-    connectionsProvider.refresh();
+  const instance = saved[host];
+  if (!instance) {
+    output.appendLine(`No saved environment for ${host}`);
+    return;
   }
+
+  let token = await context.secrets.get(`token:${host}`);
+  let expiry = context.globalState.get<number>(`tokenExpires:${host}`) ?? 0;
+  if (!token || expiry <= Date.now()) {
+    output.appendLine(`Token for ${host} missing or expired. Reauthenticating...`);
+    const auth = await login(context, output);
+    if (!auth || !auth.result.account) {
+      vscode.window.showErrorMessage('Sign in required to open environment');
+      return;
+    }
+    const envToken = await acquireTokenForResource(
+      auth.pca,
+      auth.result.account,
+      instance.ApiUrl,
+      output,
+    );
+    token = envToken.accessToken;
+    expiry = envToken.expiresOn?.getTime() ?? Date.now() + 3600 * 1000;
+    await saveConnection(
+      context,
+      instance,
+      token,
+      envToken.expiresOn ?? new Date(expiry),
+      auth.result.account.username,
+    );
+  }
+
+  fsProvider.connect(token, instance.ApiUrl, folder.uri);
+  connectionsProvider.refresh();
 }
 
 export async function activate(context: vscode.ExtensionContext) {

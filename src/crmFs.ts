@@ -286,27 +286,8 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     }
     if (entry.type === vscode.FileType.File) {
       const name = newUri.path.replace(/^\/+/, '');
-      if (entry.id) {
-        if (!this.accessToken || !this.apiUrl) {
-          throw vscode.FileSystemError.Unavailable('Not connected');
-        }
-        const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
-        this.output?.appendLine(`PATCH ${url}`);
-        this.output?.appendLine(
-          `Request Body: ${JSON.stringify({ name, displayname: name })}`,
-        );
-        const resp = await fetch(url, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, displayname: name }),
-        });
-        this.output?.appendLine(`Response: ${resp.status}`);
-        if (!resp.ok) {
-          const body = await resp.text();
-          this.output?.appendLine(`Failed to rename ${oldUri.path}: ${resp.status} ${body}`);
-          throw vscode.FileSystemError.Unavailable(`Failed to rename ${oldUri.path}`);
-        }
-        await this._publish(entry.id);
+      if (entry.id && this.accessToken && this.apiUrl) {
+        entry.id = await this._recreateWithNewName(entry, oldUri.path.replace(/^\/+/, ''), name);
       }
       const parentOld = this._lookupAsDirectory(vscode.Uri.joinPath(oldUri, '..'));
       parentOld.children.delete(oldUri.path.split('/').pop() || '');
@@ -485,27 +466,85 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     }
   }
 
+  private async _recreateWithNewName(entry: FileEntry, oldName: string, newName: string): Promise<string | undefined> {
+    if (!entry.id || !this.accessToken || !this.apiUrl) {
+      return entry.id;
+    }
+
+    const headers = { Authorization: `Bearer ${this.accessToken}` };
+
+    const getUrl = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})?$select=content,webresourcetype`;
+    this.output?.appendLine(`GET ${getUrl}`);
+    const getResp = await fetch(getUrl, { headers });
+    this.output?.appendLine(`Response: ${getResp.status}`);
+    if (!getResp.ok) {
+      const body = await getResp.text();
+      this.output?.appendLine(`Failed to fetch ${oldName}: ${getResp.status} ${body}`);
+      throw vscode.FileSystemError.Unavailable(`Failed to fetch ${oldName}`);
+    }
+    const json = await getResp.json();
+    const content = json.content as string;
+    const type = json.webresourcetype as number ?? this._getTypeFromExtension(oldName);
+
+    const postUrl = `${this.apiUrl}/api/data/v9.2/webresourceset`;
+    this.output?.appendLine(`POST ${postUrl}`);
+    const bodyData = { name: newName, displayname: newName, webresourcetype: type, content };
+    this.output?.appendLine(`Request Body: ${JSON.stringify(bodyData)}`);
+    const postResp = await fetch(postUrl, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyData),
+    });
+    this.output?.appendLine(`Response: ${postResp.status}`);
+    const rawHeaders: Record<string, string> = {};
+    postResp.headers.forEach((v, k) => {
+      rawHeaders[k] = v;
+    });
+    const text = await postResp.text();
+    this.output?.appendLine(`Response Headers: ${JSON.stringify(rawHeaders)}`);
+    this.output?.appendLine(`Response Body: ${text}`);
+    if (!postResp.ok) {
+      this.output?.appendLine(`Failed to create ${newName}: ${postResp.status} ${text}`);
+      throw vscode.FileSystemError.Unavailable(`Failed to create ${newName}`);
+    }
+    let newId: string | undefined;
+    if (text) {
+      try {
+        newId = JSON.parse(text).webresourceid as string;
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!newId) {
+      const entityId =
+        postResp.headers.get('OData-EntityId') || postResp.headers.get('odata-entityid') || postResp.headers.get('Location');
+      const match = entityId ? /\(([^)]+)\)/.exec(entityId) : null;
+      if (match) {
+        newId = match[1];
+      }
+    }
+
+    const delUrl = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
+    this.output?.appendLine(`DELETE ${delUrl}`);
+    const delResp = await fetch(delUrl, { method: 'DELETE', headers });
+    this.output?.appendLine(`Response: ${delResp.status}`);
+    if (!delResp.ok) {
+      const body = await delResp.text();
+      this.output?.appendLine(`Failed to delete ${oldName}: ${delResp.status} ${body}`);
+      throw vscode.FileSystemError.Unavailable(`Failed to delete ${oldName}`);
+    }
+
+    await this._publish(newId);
+    return newId;
+  }
+
   private async _renameFolderEntries(entry: DirEntry, oldPrefix: string, newPrefix: string): Promise<void> {
     for (const [name, child] of entry.children) {
       const oldPath = `${oldPrefix}/${name}`;
       const newPath = `${newPrefix}/${name}`;
       if (child.type === vscode.FileType.File) {
         if (child.id && this.accessToken && this.apiUrl) {
-          const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${child.id})`;
-          this.output?.appendLine(`PATCH ${url}`);
-          this.output?.appendLine(`Request Body: ${JSON.stringify({ name: newPath, displayname: newPath })}`);
-          const resp = await fetch(url, {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: newPath, displayname: newPath }),
-          });
-          this.output?.appendLine(`Response: ${resp.status}`);
-          if (!resp.ok) {
-            const body = await resp.text();
-            this.output?.appendLine(`Failed to rename ${oldPath}: ${resp.status} ${body}`);
-            throw vscode.FileSystemError.Unavailable(`Failed to rename ${oldPath}`);
-          }
-          await this._publish(child.id);
+          child.id = await this._recreateWithNewName(child, oldPath, newPath);
         }
       } else {
         await this._renameFolderEntries(child, oldPath, newPath);

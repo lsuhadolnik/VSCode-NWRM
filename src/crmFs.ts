@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import fetch from 'node-fetch';
+import * as path from 'path';
 
 export interface WebResource {
   id: string;
@@ -69,6 +70,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       `Request Headers: ${JSON.stringify({ Authorization: 'Bearer ***' })}`,
     );
     const resp = await fetch(url, { headers });
+    this.output?.appendLine(`Response: ${resp.status}`);
     if (!resp.ok) {
       const body = await resp.text();
       this.output?.appendLine(`Failed to fetch ${uri.path}: ${resp.status} ${body}`);
@@ -100,11 +102,14 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         } else {
           const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${existing.id})`;
           this.output?.appendLine(`PATCH ${url}`);
+          const bodyData = { content: data };
+          this.output?.appendLine(`Request Body: ${JSON.stringify(bodyData)}`);
           const resp = await fetch(url, {
             method: 'PATCH',
             headers,
-            body: JSON.stringify({ content: data }),
+            body: JSON.stringify(bodyData),
           });
+          this.output?.appendLine(`Response: ${resp.status}`);
           if (!resp.ok) {
             const body = await resp.text();
             this.output?.appendLine(`Failed to update ${uri.path}: ${resp.status} ${body}`);
@@ -116,16 +121,19 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         const type = this._getTypeFromExtension(name);
         const url = `${this.apiUrl}/api/data/v9.2/webresourceset`;
         this.output?.appendLine(`POST ${url}`);
+        const bodyData = {
+          name,
+          displayname: name,
+          webresourcetype: type,
+          content: data,
+        };
+        this.output?.appendLine(`Request Body: ${JSON.stringify(bodyData)}`);
         const resp = await fetch(url, {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            name,
-            displayname: name,
-            webresourcetype: type,
-            content: data,
-          }),
+          body: JSON.stringify(bodyData),
         });
+        this.output?.appendLine(`Response: ${resp.status}`);
         const rawHeaders: Record<string, string> = {};
         resp.headers.forEach((v, k) => {
           rawHeaders[k] = v;
@@ -156,16 +164,19 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         const type = this._getTypeFromExtension(name);
         const url = `${this.apiUrl}/api/data/v9.2/webresourceset`;
         this.output?.appendLine(`POST ${url}`);
+        const bodyData = {
+          name,
+          displayname: name,
+          webresourcetype: type,
+          content: data,
+        };
+        this.output?.appendLine(`Request Body: ${JSON.stringify(bodyData)}`);
         const resp = await fetch(url, {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            name,
-            displayname: name,
-            webresourcetype: type,
-            content: data,
-          }),
+          body: JSON.stringify(bodyData),
         });
+        this.output?.appendLine(`Response: ${resp.status}`);
         const text = await resp.text();
         if (!resp.ok) {
           this.output?.appendLine(`Failed to create ${uri.path}: ${resp.status} ${text}`);
@@ -213,18 +224,21 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       if (!this.accessToken || !this.apiUrl) {
         throw vscode.FileSystemError.Unavailable('Not connected');
       }
-      const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
-      this.output?.appendLine(`DELETE ${url}`);
-      const resp = await fetch(url, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${this.accessToken}` },
-      });
-      if (!resp.ok) {
-        const body = await resp.text();
-        this.output?.appendLine(`Failed to delete ${uri.path}: ${resp.status} ${body}`);
-        throw vscode.FileSystemError.Unavailable(`Failed to delete ${uri.path}`);
+      if (entry.id) {
+        const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
+        this.output?.appendLine(`DELETE ${url}`);
+        const resp = await fetch(url, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+        });
+        this.output?.appendLine(`Response: ${resp.status}`);
+        if (!resp.ok) {
+          const body = await resp.text();
+          this.output?.appendLine(`Failed to delete ${uri.path}: ${resp.status} ${body}`);
+          throw vscode.FileSystemError.Unavailable(`Failed to delete ${uri.path}`);
+        }
+        await this._publish(entry.id);
       }
-      await this._publish(entry.id);
     }
     const parent = vscode.Uri.joinPath(uri, '..');
     const parentEntry = this._lookupAsDirectory(parent);
@@ -252,11 +266,15 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         }
         const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${entry.id})`;
         this.output?.appendLine(`PATCH ${url}`);
+        this.output?.appendLine(
+          `Request Body: ${JSON.stringify({ name, displayname: name })}`,
+        );
         const resp = await fetch(url, {
           method: 'PATCH',
           headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, displayname: name }),
         });
+        this.output?.appendLine(`Response: ${resp.status}`);
         if (!resp.ok) {
           const body = await resp.text();
           this.output?.appendLine(`Failed to rename ${oldUri.path}: ${resp.status} ${body}`);
@@ -268,7 +286,18 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       parentOld.children.delete(oldUri.path.split('/').pop() || '');
       this._addEntry(name, entry.id);
     } else {
-      // directory rename only updates local tree
+      const confirm = await vscode.window.showWarningMessage(
+        `Rename folder ${oldUri.path} and all contained files?`,
+        { modal: true },
+        'Yes',
+      );
+      if (confirm !== 'Yes') {
+        return;
+      }
+      const oldPath = oldUri.path.replace(/^\/+/, '');
+      const newPath = newUri.path.replace(/^\/+/, '');
+      await this._renameFolderEntries(entry as DirEntry, oldPath, newPath);
+
       const oldParent = this._lookupAsDirectory(vscode.Uri.joinPath(oldUri, '..'));
       const child = oldParent.children.get(oldUri.path.split('/').pop() || '');
       if (!child) {
@@ -277,6 +306,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       oldParent.children.delete(oldUri.path.split('/').pop() || '');
       const newParent = this._lookupAsDirectory(vscode.Uri.joinPath(newUri, '..'));
       newParent.children.set(newUri.path.split('/').pop() || '', child);
+      await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
     }
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, oldUri, newUri } as any]);
   }
@@ -299,6 +329,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
             `Request Headers: ${JSON.stringify({ Authorization: 'Bearer ***' })}`,
           );
           const resp = await fetch(url, { headers });
+          this.output?.appendLine(`Response: ${resp.status}`);
           if (!resp.ok) {
             const body = await resp.text();
             this.output?.appendLine(`Failed to list webresources: ${resp.status} ${body}`);
@@ -394,16 +425,66 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   private _getTypeFromExtension(name: string): number {
-    if (name.endsWith('.html') || name.endsWith('.htm')) {
-      return 1;
+    const ext = path.extname(name).toLowerCase();
+    switch (ext) {
+      case '.htm':
+      case '.html':
+        return 1;
+      case '.css':
+        return 2;
+      case '.js':
+        return 3;
+      case '.xml':
+        return 4;
+      case '.png':
+        return 5;
+      case '.jpg':
+      case '.jpeg':
+        return 6;
+      case '.gif':
+        return 7;
+      case '.xap':
+        return 8;
+      case '.xsl':
+      case '.xslt':
+        return 9;
+      case '.ico':
+        return 10;
+      case '.svg':
+        return 11;
+      case '.resx':
+        return 12;
+      default:
+        return 1;
     }
-    if (name.endsWith('.js')) {
-      return 3;
+  }
+
+  private async _renameFolderEntries(entry: DirEntry, oldPrefix: string, newPrefix: string): Promise<void> {
+    for (const [name, child] of entry.children) {
+      const oldPath = `${oldPrefix}/${name}`;
+      const newPath = `${newPrefix}/${name}`;
+      if (child.type === vscode.FileType.File) {
+        if (child.id && this.accessToken && this.apiUrl) {
+          const url = `${this.apiUrl}/api/data/v9.2/webresourceset(${child.id})`;
+          this.output?.appendLine(`PATCH ${url}`);
+          this.output?.appendLine(`Request Body: ${JSON.stringify({ name: newPath, displayname: newPath })}`);
+          const resp = await fetch(url, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newPath, displayname: newPath }),
+          });
+          this.output?.appendLine(`Response: ${resp.status}`);
+          if (!resp.ok) {
+            const body = await resp.text();
+            this.output?.appendLine(`Failed to rename ${oldPath}: ${resp.status} ${body}`);
+            throw vscode.FileSystemError.Unavailable(`Failed to rename ${oldPath}`);
+          }
+          await this._publish(child.id);
+        }
+      } else {
+        await this._renameFolderEntries(child, oldPath, newPath);
+      }
     }
-    if (name.endsWith('.css')) {
-      return 2;
-    }
-    return 1;
   }
 
   private async _publish(id?: string): Promise<void> {

@@ -9,6 +9,8 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Auto-publish on save** – Press `Ctrl+S` to upload and publish changes back to Dynamics CRM.
 - **Publish command** – Publish individual Web Resources from the context menu or Command Palette.
 - **Create and rename** – Add new files and folders and rename existing Web Resources directly from VS Code.
+- **Folder rename** – Renaming a folder updates all contained Web Resources after confirmation.
+- **Additional file types** – Supports images, XML, icons, and more alongside HTML, CSS, and JavaScript.
 - **Connections sidebar** – Manage saved environments from the activity bar.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
 - **Web Resource Manager sidebar** – Reuse stored tokens to reconnect to previous environments and delete them when no longer needed.

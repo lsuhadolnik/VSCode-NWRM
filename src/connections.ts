@@ -55,16 +55,16 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     if (element instanceof AccountItem) {
       const items: EnvironmentItem[] = [];
-      for (const [urlName, instance] of Object.entries(saved)) {
-        const account = this.context.globalState.get<string>(`savedAccount:${urlName}`);
+      for (const [host, instance] of Object.entries(saved)) {
+        const account = this.context.globalState.get<string>(`savedAccount:${host}`);
         if (account !== element.account) {
           continue;
         }
-        const expiry = this.context.globalState.get<number>(`tokenExpires:${urlName}`);
+        const expiry = this.context.globalState.get<number>(`tokenExpires:${host}`);
         if (!expiry || expiry <= Date.now()) {
           continue;
         }
-        const token = await this.context.secrets.get(`token:${urlName}`);
+        const token = await this.context.secrets.get(`token:${host}`);
         if (!token) {
           continue;
         }

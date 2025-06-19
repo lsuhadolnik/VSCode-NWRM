@@ -23,8 +23,7 @@ async function tryLoadFolder(
   if (!folder) {
     return;
   }
-  const parts = folder.uri.path.split('/').filter(Boolean);
-  const env = parts[0];
+  const env = folder.uri.authority;
   if (!env) {
     return;
   }
@@ -69,30 +68,41 @@ export async function activate(context: vscode.ExtensionContext) {
       const { pca, result } = auth;
       const discoveryToken = result.accessToken;
       const instances = await listInstances(discoveryToken, output);
-      const instance = await promptForInstance(context, instances);
-      if (instance && result.account) {
-        const envTokenResult = await acquireTokenForResource(
-          pca,
-          result.account,
-          instance.ApiUrl,
-          output
-        );
-        const token = envTokenResult.accessToken;
-        const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
-        await saveConnection(context, instance, token, tokenExpires, result.account.username);
-        const root = vscode.Uri.parse(`d365-nwrm://${new URL(instance.ApiUrl).host}/${instance.UrlName}`);
-        output.appendLine(`Opening folder ${root.toString()}`);
-        await vscode.commands.executeCommand('vscode.openFolder', root, false);
+      if (result.account) {
+        for (const instance of instances) {
+          try {
+            const envTokenResult = await acquireTokenForResource(
+              pca,
+              result.account,
+              instance.ApiUrl,
+              output
+            );
+            const token = envTokenResult.accessToken;
+            const tokenExpires = envTokenResult.expiresOn ?? new Date(Date.now() + 3600 * 1000);
+            await saveConnection(
+              context,
+              instance,
+              token,
+              tokenExpires,
+              result.account.username
+            );
+          } catch (err: any) {
+            output.appendLine(`Failed to acquire token for ${instance.ApiUrl}: ${err}`);
+          }
+        }
+        vscode.window.showInformationMessage('Sign in successful. Open an environment from the Dynamics WebResource Manager view.');
+        connectionsProvider.refresh();
       }
     }
   });
 
 
   const deleteTokenCmd = vscode.commands.registerCommand('dynamicsCrm.deleteToken', async (item: EnvironmentItem) => {
-    await context.secrets.delete(`token:${item.instance.UrlName}`);
-    await context.globalState.update(`tokenExpires:${item.instance.UrlName}`, undefined);
+    const host = new URL(item.instance.ApiUrl).host;
+    await context.secrets.delete(`token:${host}`);
+    await context.globalState.update(`tokenExpires:${host}`, undefined);
     const saved = context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
-    delete saved[item.instance.UrlName];
+    delete saved[host];
     await context.globalState.update('savedEnvironments', saved);
     connectionsProvider.refresh();
   });
@@ -111,7 +121,7 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
     await saveConnection(context, item.instance, item.token, item.expiresOn, item.account);
-    const uri = vscode.Uri.parse(`d365-nwrm://${new URL(item.instance.ApiUrl).host}/${item.instance.UrlName}`);
+    const uri = vscode.Uri.parse(`d365-nwrm://${new URL(item.instance.ApiUrl).host}`);
     output.appendLine(`Opening folder ${uri.toString()}`);
     await vscode.commands.executeCommand('vscode.openFolder', uri, false);
   });
@@ -314,26 +324,6 @@ async function listInstances(accessToken: string, output: vscode.OutputChannel):
   return json.value;
 }
 
-async function promptForInstance(
-  context: vscode.ExtensionContext,
-  instances: DiscoveryInstance[]
-): Promise<DiscoveryInstance | undefined> {
-  const items = instances.map((i) => ({
-    label: i.FriendlyName ?? i.UniqueName,
-    description: i.UrlName,
-    detail: i.ApiUrl,
-    instance: i
-  }));
-  const pick = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Select Dynamics environment'
-  });
-  if (pick) {
-    await context.globalState.update('selectedInstance', pick.instance.UrlName);
-    vscode.window.showInformationMessage(`Selected ${pick.label}`);
-    return pick.instance;
-  }
-  return undefined;
-}
 
 async function saveConnection(
   context: vscode.ExtensionContext,
@@ -342,12 +332,13 @@ async function saveConnection(
   expires: Date,
   account: string
 ): Promise<void> {
-  await context.secrets.store(`token:${instance.UrlName}`, token);
-  await context.globalState.update(`tokenExpires:${instance.UrlName}`, expires.getTime());
+  const host = new URL(instance.ApiUrl).host;
+  await context.secrets.store(`token:${host}`, token);
+  await context.globalState.update(`tokenExpires:${host}`, expires.getTime());
   const saved = context.globalState.get<Record<string, DiscoveryInstance>>('savedEnvironments') ?? {};
-  saved[instance.UrlName] = instance;
+  saved[host] = instance;
   await context.globalState.update('savedEnvironments', saved);
-  await context.globalState.update(`savedAccount:${instance.UrlName}`, account);
+  await context.globalState.update(`savedAccount:${host}`, account);
 }
 
 export function deactivate() {}

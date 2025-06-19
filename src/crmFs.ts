@@ -36,6 +36,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   setBasePath(uri: vscode.Uri): void {
     this.rootUri = uri;
     this.basePath = uri.path;
+    this.output?.appendLine(`Base path set to ${this.basePath}`);
   }
 
   private _normalizePath(uri: vscode.Uri): string {
@@ -72,6 +73,9 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   readDirectory(uri: vscode.Uri): [string, vscode.FileType][] {
+    this.output?.appendLine(
+      `readDirectory ${uri.toString()} -> ${this._normalizePath(uri)}`,
+    );
     const entry = this._lookupAsDirectory(uri);
     return Array.from(entry.children).map(([name, child]) => [name, child.type]);
   }
@@ -347,6 +351,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     this.setBasePath(root);
     this.root.children.clear();
     this.output?.appendLine(`Loading web resources from ${this.apiUrl}`);
+    this.output?.appendLine(`Root URI ${root.toString()} basePath ${this.basePath}`);
 
     let count = 0;
     await vscode.window.withProgress(

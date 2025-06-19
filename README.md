@@ -13,7 +13,6 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Additional file types** – Supports images, XML, icons, and more alongside HTML, CSS, and JavaScript.
 - **Explorer panel** – Manage saved accounts and environments from the new *Dynamics WebResource Manager* view under the File Explorer.
 - **Command Palette command** – Quickly connect to an environment from the Command Palette.
-- **Add connection button** – Use the **+ Add Connection** action in the panel to sign in to another environment.
 - **Reload command** – Refresh the list of web resources on demand.
 - **Type filter** – Limit loaded web resources by extension (JS, HTML, CSS, ...).
 
@@ -44,10 +43,10 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    code .
    ```
    Press `F5` in VS Code to start debugging.
-   Once VS Code launches, run the **Dynamics CRM: Connect** command and choose
-   the environment you want to work with. A quick pick displays the device code
-   and copies it to your clipboard, opening the login page when you press
-  **Enter**.
+   Once VS Code launches, run the **Dynamics CRM: Connect** command to sign in.
+   A quick pick displays the device code and copies it to your clipboard,
+   opening the login page when you press **Enter**. After signing in, select an
+   environment from the **Dynamics WebResource Manager** view in the Explorer.
   If anything goes wrong during sign in or environment discovery, check the
   **Dynamics CRM** output channel for details.
   You can open the output view with `Ctrl+Shift+U` (View → Output) and choose
@@ -56,7 +55,9 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
   troubleshooting authentication problems easier.
   Saved connections with valid tokens appear in the **Dynamics WebResource Manager** panel so you can quickly reconnect or remove them.
   After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
-  Selecting an environment opens a virtual folder using the `d365-nwrm:` scheme where the Web Resources are shown.
+  Selecting an environment opens a virtual folder using the `d365-nwrm:` scheme
+  (for example `d365-nwrm://org.crm.dynamics.com`) where the Web Resources are
+  shown.
   If prompted to trust the folder, choose **Yes** and the resources will load automatically.
 
 ### Environment Discovery
@@ -69,7 +70,7 @@ GET https://globaldisco.crm.dynamics.com/api/discovery/v2.0/Instances?$select=Ap
 Authorization: Bearer <access token>
 ```
 
-The response contains environment metadata used to populate the quick pick menu.
+The response contains environment metadata used to populate the Explorer view.
 
 ### Azure App Registration
 

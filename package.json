@@ -77,23 +77,6 @@
           "when": "view == connections && viewItem == environment",
           "group": "inline"
         }
-      ],
-      "view/title": [
-        {
-          "command": "dynamicsCrm.addConnection",
-          "when": "view == connections",
-          "group": "navigation"
-        },
-        {
-          "command": "dynamicsCrm.reloadWebResources",
-          "when": "view == connections",
-          "group": "navigation"
-        },
-        {
-          "command": "dynamicsCrm.filterTypes",
-          "when": "view == connections",
-          "group": "navigation"
-        }
       ]
     }
   },

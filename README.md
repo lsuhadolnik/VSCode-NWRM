@@ -19,6 +19,14 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 - **Type filter** – Limit loaded web resources by extension (JS, HTML, CSS, ...).
 - **Lazy loading** – Web Resources are fetched the first time you open the folder.
 
+## Demos
+
+### Interactive login
+![Interactive Login](./demos/01-Login.gif)
+
+### Editing files, moving between folders
+![Interactive Login](./demos/02-Editing-Moving.gif)
+
 ## Getting Started
 
 This repository contains a TypeScript-based VSCode extension compiled using the TypeScript compiler (`tsc`).

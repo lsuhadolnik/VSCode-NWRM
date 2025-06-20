@@ -4,6 +4,11 @@
 
 This extension provides an integrated experience for managing Dynamics 365 (CRM) Web Resources directly from Visual Studio Code. It connects to your CRM instance, discovers all available environments and exposes Web Resources as virtual files in a writable virtual filesystem. You can open, edit, and save changes back to Dynamics without leaving VS Code.
 
+## Now on [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=LovroSuhadolnik.vscode-nwrm) 🎉
+Just search for NWRM inside VSCode and install!
+![How to install the extension through VSCode](https://github.com/user-attachments/assets/80d035a8-8d47-4048-8418-a74f0d0a737c)
+
+
 ## Features
 
 - **Interactive authentication** – Sign in to your Dynamics CRM tenant and automatically discover all environments using the Discovery Service. After signing in, you're prompted to choose the environment to connect to. A prompt copies the device code to your clipboard and opens the login page for you.

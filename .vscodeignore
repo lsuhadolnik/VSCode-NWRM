@@ -1,6 +1,5 @@
 .vscode/**
 .vscode-test/**
-src/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
@@ -11,4 +10,10 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 AGENTS.md
 .env.example
-.github/**
+.github/
+node_modules
+out/
+src/
+tsconfig.json
+webpack.config.js
+esbuild.js

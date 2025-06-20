@@ -92,6 +92,12 @@ The extension authenticates using the device code flow and does not require a cl
 - `npm test` – Currently runs the build as a sanity check.
 - `npm run watch` – Rebuild on file changes.
 
+## TODO
+
+- Resolve double "Loading Web Resources"
+- Add support for Ctrl+P
+- Add support for global search (search in files)
+
 ## Installing from Releases
 
 Download the `.vsix` file attached to the latest release on GitHub. In VS Code open the Command Palette with `Ctrl+Shift+P`, select **Extensions: Install from VSIX...**, and choose the downloaded file.

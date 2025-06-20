@@ -11,5 +11,6 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node", "vscode"],
     "moduleResolution": "Node16"
-  }
+  },
+  "exclude": ["vite.config.ts"]
 }

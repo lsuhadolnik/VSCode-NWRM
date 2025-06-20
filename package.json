@@ -95,14 +95,16 @@
     "bundle": "vite build",
     "watch": "tsc -watch -p ./",
     "build": "npm run compile && npm run bundle",
-    "test": "npm run build"
+    "test": "npm run build",
+    "vsix": "npm run build && vsce package"
   },
   "devDependencies": {
     "@types/node": "^18.18.0",
     "@types/node-fetch": "^2.6.12",
     "@types/vscode": "^1.80.0",
     "typescript": "^5.2.2",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vsce": "^2.15.0"
   },
   "dependencies": {
     "@azure/msal-node": "^3.6.0",

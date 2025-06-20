@@ -91,6 +91,7 @@ The extension authenticates using the device code flow and does not require a cl
 - `npm run build` – Compile the extension using TypeScript.
 - `npm test` – Currently runs the build as a sanity check.
 - `npm run watch` – Rebuild on file changes.
+- `npm run vsix` – Build and package the extension as a `.vsix` file.
 
 ## TODO
 

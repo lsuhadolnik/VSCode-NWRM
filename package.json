@@ -1,8 +1,17 @@
 {
-  "name": "dynamics-crm-webresources",
-  "displayName": "Dynamics CRM Web Resources Manager",
+  "name": "vscode-nwrm",
+  "displayName": "Dynamics CRM (neo)Web Resources Manager - NWRM",
   "description": "Manage Dynamics CRM Web Resources from VS Code.",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "publisher": "LovroSuhadolnik",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lsuhadolnik/VSCode-NWRM"
+  },
+  "homepage": "https://github.com/lsuhadolnik/VSCode-NWRM",
+  "bugs": {
+    "url": "https://github.com/lsuhadolnik/VSCode-NWRM/issues"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -10,10 +19,10 @@
     "Other"
   ],
   "activationEvents": [
-    "onFileSystem:d365-nwrm"
+    "onFileSystem:d365nwrm"
   ],
   "main": "./out/extension.js",
-  "icon": "images/webresource.svg",
+  "icon": "images/icon.png",
   "contributes": {
     "commands": [
       {

@@ -1,3 +1,5 @@
+![neoWebResourceManager Banner](./images/banner.png)
+
 # Dynamics CRM Web Resources Manager VSCode Extension
 
 This extension provides an integrated experience for managing Dynamics 365 (CRM) Web Resources directly from Visual Studio Code. It connects to your CRM instance, discovers all available environments and exposes Web Resources as virtual files in a writable virtual filesystem. You can open, edit, and save changes back to Dynamics without leaving VS Code.
@@ -48,18 +50,18 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
    A quick pick displays the device code and copies it to your clipboard,
    opening the login page when you press **Enter**. After signing in, select an
    environment from the **Dynamics WebResource Manager** view in the Explorer.
-  If anything goes wrong during sign in or environment discovery, check the
-  **Dynamics CRM** output channel for details.
-  You can open the output view with `Ctrl+Shift+U` (View → Output) and choose
-  **Dynamics CRM** from the channel dropdown to see detailed logs, including web
-  resource load errors. Each HTTP request is logged with headers to make
-  troubleshooting authentication problems easier.
-  Saved connections with valid tokens appear in the **Dynamics WebResource Manager** panel so you can quickly reconnect or remove them.
-  After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
-  Selecting an environment opens a virtual folder using the `d365-nwrm:` scheme
-  (for example `d365-nwrm://org.crm.dynamics.com`) where the Web Resources are
-  shown. If prompted to trust the folder, choose **Yes**. Web Resources are
-  loaded the first time you expand the folder.
+    If anything goes wrong during sign in or environment discovery, check the
+    **Dynamics CRM** output channel for details.
+    You can open the output view with `Ctrl+Shift+U` (View → Output) and choose
+    **Dynamics CRM** from the channel dropdown to see detailed logs, including web
+    resource load errors. Each HTTP request is logged with headers to make
+    troubleshooting authentication problems easier.
+    Saved connections with valid tokens appear in the **Dynamics WebResource Manager** panel so you can quickly reconnect or remove them.
+    After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
+    Selecting an environment opens a virtual folder using the `d365-nwrm:` scheme
+    (for example `d365-nwrm://org.crm.dynamics.com`) where the Web Resources are
+    shown. If prompted to trust the folder, choose **Yes**. Web Resources are
+    loaded the first time you expand the folder.
 
 ### Environment Discovery
 

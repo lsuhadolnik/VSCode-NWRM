@@ -83,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
     await saveConnection(context, item.instance, item.token, item.expiresOn, item.account);
-    const uri = vscode.Uri.parse(`d365-nwrm://${new URL(item.instance.ApiUrl).host}`);
+    const uri = vscode.Uri.parse(`d365-nwrm:/${new URL(item.instance.ApiUrl).host}`);
     output.appendLine(`Opening folder ${uri.toString()}`);
     await vscode.commands.executeCommand('vscode.openFolder', uri, false);
   });

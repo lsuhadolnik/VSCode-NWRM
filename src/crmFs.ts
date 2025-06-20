@@ -38,10 +38,11 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
 
   private _ensureConnected(uri: vscode.Uri): void {
     if (!this.rootUri) {
+      const host = uri.authority || uri.path.replace(/^\/+/, '').split('/')[0];
       const root = vscode.Uri.from({
         scheme: uri.scheme,
-        authority: uri.authority,
-        path: '/',
+        authority: '',
+        path: `/${host}`,
       });
       this.output?.appendLine(`Connecting to ${root.toString()}`);
       this.connect(root);
@@ -56,7 +57,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
   }
 
   connect(root: vscode.Uri): void {
-    this.host = root.authority;
+    this.host = root.authority || root.path.replace(/^\/+/, '').split('/')[0];
     this.setBasePath(root);
     this.root.children.clear();
     this.loaded = false;

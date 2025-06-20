@@ -59,7 +59,7 @@ This repository contains a TypeScript-based VSCode extension compiled using the 
     Saved connections with valid tokens appear in the **Dynamics WebResource Manager** panel so you can quickly reconnect or remove them.
     After selecting an environment, the extension acquires a separate access token scoped to that instance to avoid 401 errors caused by an invalid audience.
     Selecting an environment opens a virtual folder using the `d365-nwrm:` scheme
-    (for example `d365-nwrm://org.crm.dynamics.com`) where the Web Resources are
+    (for example `d365-nwrm:/org.crm.dynamics.com`) where the Web Resources are
     shown. If prompted to trust the folder, choose **Yes**. Web Resources are
     loaded the first time you expand the folder.
 

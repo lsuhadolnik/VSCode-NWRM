@@ -19,7 +19,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onFileSystem:d365nwrm"
+    "onFileSystem:d365-nwrm"
   ],
   "main": "./out/extension.js",
   "icon": "images/icon.png",

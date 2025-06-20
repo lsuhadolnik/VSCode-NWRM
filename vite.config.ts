@@ -14,8 +14,6 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'vscode',
-        '@azure/msal-node',
-        'dotenv',
         'path',
         'fs',
       ],

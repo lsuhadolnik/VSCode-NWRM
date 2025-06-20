@@ -73,20 +73,35 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand('dynamicsCrm.connect');
   });
 
-  const openEnvCmd = vscode.commands.registerCommand('dynamicsCrm.openEnvironment', async (item: EnvironmentItem) => {
-    const pick = await vscode.window.showInformationMessage(
-      `Open environment ${item.description}?`,
-      { modal: true },
-      'Open'
-    );
-    if (pick !== 'Open') {
-      return;
-    }
-    await saveConnection(context, item.instance, item.token, item.expiresOn, item.account);
-    const uri = vscode.Uri.parse(`d365-nwrm:/${new URL(item.instance.ApiUrl).host}`);
-    output.appendLine(`Opening folder ${uri.toString()}`);
-    await vscode.commands.executeCommand('vscode.openFolder', uri, false);
-  });
+  const openEnvCmd = vscode.commands.registerCommand(
+    'dynamicsCrm.openEnvironment',
+    async (item: EnvironmentItem) => {
+      const uri = vscode.Uri.parse(`d365-nwrm:/${new URL(item.instance.ApiUrl).host}`);
+      const openWorkspace = vscode.workspace.workspaceFolders?.find(
+        (f) => f.uri.toString() === uri.toString(),
+      );
+      if (openWorkspace) {
+        await saveConnection(context, item.instance, item.token, item.expiresOn, item.account);
+        output.appendLine(`Reloading environment ${uri.toString()}`);
+        fsProvider.connect(uri);
+        const count = await fsProvider.reload();
+        vscode.window.showInformationMessage(`Reloaded ${count} web resources.`);
+        return;
+      }
+
+      const pick = await vscode.window.showInformationMessage(
+        `Open environment ${item.description}?`,
+        { modal: true },
+        'Open',
+      );
+      if (pick !== 'Open') {
+        return;
+      }
+      await saveConnection(context, item.instance, item.token, item.expiresOn, item.account);
+      output.appendLine(`Opening folder ${uri.toString()}`);
+      await vscode.commands.executeCommand('vscode.openFolder', uri, false);
+    },
+  );
 
   const publishCmd = vscode.commands.registerCommand(
     'dynamicsCrm.publishWebResource',

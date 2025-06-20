@@ -156,7 +156,10 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       throw vscode.FileSystemError.Unavailable(`Failed to fetch ${uri.path}`);
     }
     const json = await resp.json();
-    const base64 = json.content as string;
+    const base64 = (json.content as string | undefined) ?? '';
+    if (!base64) {
+      return new Uint8Array();
+    }
     return Buffer.from(base64, 'base64');
   }
 

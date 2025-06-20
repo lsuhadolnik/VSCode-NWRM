@@ -237,7 +237,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         existing.id = id;
       }
     } else if (!existing && options.create) {
-      const name = uri.path.replace(/^\/+/, '');
+      const name = this._normalizePath(uri).replace(/^\/+/, '');
       if (data.length === 0) {
         this._addEntry(name);
       } else {
@@ -297,7 +297,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
 
   createDirectory(uri: vscode.Uri): void {
     this._ensureConnected(uri);
-    const parts = uri.path.split('/').slice(1);
+    const parts = this._normalizePath(uri).split('/').slice(1);
     let dir = this.root;
     for (const part of parts) {
       let child = dir.children.get(part);
@@ -360,11 +360,15 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       throw vscode.FileSystemError.FileExists(newUri);
     }
     if (entry.type === vscode.FileType.File) {
-      const name = newUri.path.replace(/^\/+/, '');
+      const name = this._normalizePath(newUri).replace(/^\/+/, '');
       if (entry.id) {
         const conn = await this._getConnection();
         if (conn) {
-          entry.id = await this._recreateWithNewName(entry, oldUri.path.replace(/^\/+/, ''), name);
+          entry.id = await this._recreateWithNewName(
+            entry,
+            this._normalizePath(oldUri).replace(/^\/+/, ''),
+            name,
+          );
         }
       }
       const parentOld = this._lookupAsDirectory(vscode.Uri.joinPath(oldUri, '..'));
@@ -379,8 +383,8 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       if (confirm !== 'Yes') {
         return;
       }
-      const oldPath = oldUri.path.replace(/^\/+/, '');
-      const newPath = newUri.path.replace(/^\/+/, '');
+      const oldPath = this._normalizePath(oldUri).replace(/^\/+/, '');
+      const newPath = this._normalizePath(newUri).replace(/^\/+/, '');
       await this._renameFolderEntries(entry as DirEntry, oldPath, newPath);
 
       const oldParent = this._lookupAsDirectory(vscode.Uri.joinPath(oldUri, '..'));

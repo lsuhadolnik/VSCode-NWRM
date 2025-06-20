@@ -80,6 +80,18 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
     return p;
   }
 
+  private _normalizeUri(uri: vscode.Uri): vscode.Uri {
+    return uri.with({ authority: '', path: this._normalizePath(uri) });
+  }
+
+  private _pathWithoutRoot(uri: vscode.Uri): string {
+    return this._normalizeUri(uri).path.replace(/^\/+/, '');
+  }
+
+  private _basename(uri: vscode.Uri): string {
+    return this._pathWithoutRoot(uri).split('/').pop() || '';
+  }
+
   setFilter(exts: string[]): void {
     this.allowedExts = new Set(exts.map((e) => e.toLowerCase()));
   }
@@ -144,7 +156,10 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       throw vscode.FileSystemError.Unavailable(`Failed to fetch ${uri.path}`);
     }
     const json = await resp.json();
-    const base64 = json.content as string;
+    const base64 = (json.content as string | undefined) ?? '';
+    if (!base64) {
+      return new Uint8Array();
+    }
     return Buffer.from(base64, 'base64');
   }
 
@@ -186,8 +201,8 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
             throw vscode.FileSystemError.Unavailable(`Failed to update ${uri.path}`);
           }
         }
-      } else if (data.length > 0) {
-        const name = uri.path.replace(/^\/+/, '');
+        } else if (data.length > 0) {
+          const name = this._pathWithoutRoot(uri);
         const type = this._getTypeFromExtension(name);
         const url = `${apiUrl.replace(/\/?$/, '')}/api/data/v9.2/webresourceset`;
         this.output?.appendLine(`POST ${url}`);
@@ -237,7 +252,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         existing.id = id;
       }
     } else if (!existing && options.create) {
-      const name = uri.path.replace(/^\/+/, '');
+      const name = this._pathWithoutRoot(uri);
       if (data.length === 0) {
         this._addEntry(name);
       } else {
@@ -297,7 +312,7 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
 
   createDirectory(uri: vscode.Uri): void {
     this._ensureConnected(uri);
-    const parts = uri.path.split('/').slice(1);
+    const parts = this._pathWithoutRoot(uri).split('/');
     let dir = this.root;
     for (const part of parts) {
       let child = dir.children.get(part);
@@ -340,9 +355,9 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
         await this._publish(entry.id);
       }
     }
-    const parent = vscode.Uri.joinPath(uri, '..');
-    const parentEntry = this._lookupAsDirectory(parent);
-    parentEntry.children.delete(uri.path.split('/').pop() || '');
+      const parent = vscode.Uri.joinPath(uri, '..');
+      const parentEntry = this._lookupAsDirectory(parent);
+      parentEntry.children.delete(this._basename(uri));
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Deleted, uri }]);
   }
 
@@ -360,15 +375,19 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       throw vscode.FileSystemError.FileExists(newUri);
     }
     if (entry.type === vscode.FileType.File) {
-      const name = newUri.path.replace(/^\/+/, '');
+      const name = this._pathWithoutRoot(newUri);
       if (entry.id) {
         const conn = await this._getConnection();
         if (conn) {
-          entry.id = await this._recreateWithNewName(entry, oldUri.path.replace(/^\/+/, ''), name);
+          entry.id = await this._recreateWithNewName(
+            entry,
+            this._pathWithoutRoot(oldUri),
+            name,
+          );
         }
       }
       const parentOld = this._lookupAsDirectory(vscode.Uri.joinPath(oldUri, '..'));
-      parentOld.children.delete(oldUri.path.split('/').pop() || '');
+      parentOld.children.delete(this._basename(oldUri));
       this._addEntry(name, entry.id);
     } else {
       const confirm = await vscode.window.showWarningMessage(
@@ -379,18 +398,18 @@ export class CrmFileSystemProvider implements vscode.FileSystemProvider {
       if (confirm !== 'Yes') {
         return;
       }
-      const oldPath = oldUri.path.replace(/^\/+/, '');
-      const newPath = newUri.path.replace(/^\/+/, '');
+      const oldPath = this._pathWithoutRoot(oldUri);
+      const newPath = this._pathWithoutRoot(newUri);
       await this._renameFolderEntries(entry as DirEntry, oldPath, newPath);
 
       const oldParent = this._lookupAsDirectory(vscode.Uri.joinPath(oldUri, '..'));
-      const child = oldParent.children.get(oldUri.path.split('/').pop() || '');
+      const child = oldParent.children.get(this._basename(oldUri));
       if (!child) {
         throw vscode.FileSystemError.FileNotFound(oldUri);
       }
-      oldParent.children.delete(oldUri.path.split('/').pop() || '');
+      oldParent.children.delete(this._basename(oldUri));
       const newParent = this._lookupAsDirectory(vscode.Uri.joinPath(newUri, '..'));
-      newParent.children.set(newUri.path.split('/').pop() || '', child);
+      newParent.children.set(this._basename(newUri), child);
       await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
     }
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, oldUri, newUri } as any]);

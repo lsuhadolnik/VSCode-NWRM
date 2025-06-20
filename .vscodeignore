@@ -13,3 +13,4 @@ node_modules/**
 AGENTS.md
 out/**
 .env.example
+.github/**

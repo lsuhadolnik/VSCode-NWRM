@@ -20,9 +20,9 @@ jobs:
         run: npm ci
 
       - name: Package VS Code extension
-        run: npx -p @vscode/vsce vsce package --out dynamics-crm-webresources.vsix
+        run: npm run vsix
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v1
         with:
-          files: dynamics-crm-webresources.vsix
+          files: '*.vsix'

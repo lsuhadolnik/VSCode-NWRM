@@ -6,6 +6,7 @@ This extension provides an integrated experience for managing Dynamics 365 (CRM)
 
 ## Now on [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=LovroSuhadolnik.vscode-nwrm) 🎉
 Just search for NWRM inside VSCode and install!
+
 ![How to install the extension through VSCode](https://github.com/user-attachments/assets/80d035a8-8d47-4048-8418-a74f0d0a737c)
 
 

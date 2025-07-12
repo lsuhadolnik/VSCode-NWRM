@@ -12,7 +12,8 @@ Just search for NWRM inside VSCode and install!
 ### ⚠️⚠️⚠️ IMPORTANT - There's a bug at the moment - the .env file is not created automatically
 To resolve:
 - Go to your home folder - for me, that's C:\Users\Lovro
-- Then open .vscode folder and locate the extension - for me, that's in C:\Users\Lovro\.vscode\extensions\lovrosuhadolnik.vscode-nwrm-1.0.0
+- Then open .vscode folder and locate the extension - for me, that's in <br />
+  `C:\Users\Lovro\.vscode\extensions\lovrosuhadolnik.vscode-nwrm-1.0.0`
 - inside here, create a file called **.env** and paste the following line inside:
 
 ```txt

@@ -9,6 +9,19 @@ Just search for NWRM inside VSCode and install!
 
 ![How to install the extension through VSCode](https://github.com/user-attachments/assets/80d035a8-8d47-4048-8418-a74f0d0a737c)
 
+### ⚠️⚠️⚠️ IMPORTANT - There's a bug at the moment - the .env file is not created automatically
+To resolve:
+- Go to your home folder - for me, that's C:\Users\Lovro
+- Then open .vscode folder and locate the extension - for me, that's in C:\Users\Lovro\.vscode\extensions\lovrosuhadolnik.vscode-nwrm-1.0.0
+- inside here, create a file called **.env** and paste the following line inside:
+
+```txt
+DYNAMICS_CRM_CLIENT_ID=21dd7d39-200f-4560-9a29-cf84629da135
+```
+- Save and reload your VSCode window
+
+Will try to find some time to fix that soon :)
+
 
 ## Features
 
